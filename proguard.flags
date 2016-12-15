@@ -1,1 +1,1 @@
--keep class com.android.networkrecommendation.DefaultNetworkRecommendationService
+-keep class com.android.networkrecommendation.DefaultNetworkRecommendationService* { *; }

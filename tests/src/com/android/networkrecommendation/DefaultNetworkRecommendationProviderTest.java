@@ -65,7 +65,7 @@ public class DefaultNetworkRecommendationProviderTest {
 
     static {
         Bundle attributes = new Bundle();
-        attributes.putBoolean(ScoredNetwork.EXTRA_HAS_CAPTIVE_PORTAL, true);
+        attributes.putBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL, true);
         GOOD_CAPTIVE_NETWORK = new ScoredNetwork(
                 new NetworkKey(new WifiKey("\"Captive\"", "ff:ee:dd:cc:bb:aa")),
                 GOOD_CAPTIVE_NETWORK_CURVE, false /* meteredHint */, attributes);
@@ -189,8 +189,9 @@ public class DefaultNetworkRecommendationProviderTest {
 
         assertEquals(GOOD_METERED_NETWORK.meteredHint, score.meteredHint);
         assertEquals(
-                GOOD_METERED_NETWORK.attributes.getBoolean(ScoredNetwork.EXTRA_HAS_CAPTIVE_PORTAL),
-                score.attributes.getBoolean(ScoredNetwork.EXTRA_HAS_CAPTIVE_PORTAL));
+                GOOD_METERED_NETWORK.attributes.getBoolean(
+                        ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
+                score.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL));
 
         assertEquals(GOOD_METERED_NETWORK_CURVE.start, score.rssiCurve.start);
         assertEquals(GOOD_METERED_NETWORK_CURVE.bucketWidth, score.rssiCurve.bucketWidth);
@@ -212,8 +213,9 @@ public class DefaultNetworkRecommendationProviderTest {
         assertEquals(GOOD_CAPTIVE_NETWORK.meteredHint, score.meteredHint);
 
         assertEquals(
-                GOOD_CAPTIVE_NETWORK.attributes.getBoolean(ScoredNetwork.EXTRA_HAS_CAPTIVE_PORTAL),
-                score.attributes.getBoolean(ScoredNetwork.EXTRA_HAS_CAPTIVE_PORTAL));
+                GOOD_CAPTIVE_NETWORK.attributes.getBoolean(
+                        ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
+                score.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL));
         assertEquals(GOOD_CAPTIVE_NETWORK_CURVE.start, score.rssiCurve.start);
         assertEquals(GOOD_CAPTIVE_NETWORK_CURVE.bucketWidth, score.rssiCurve.bucketWidth);
         assertArrayEquals(GOOD_CAPTIVE_NETWORK_CURVE.rssiBuckets,

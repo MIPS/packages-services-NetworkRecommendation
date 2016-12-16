@@ -316,7 +316,7 @@ public class DefaultNetworkRecommendationService extends Service {
             boolean meteredHint = "1".equals(splitScore[2]);
             Bundle attributes = new Bundle();
             if (!TextUtils.isEmpty(splitScore[3])) {
-                attributes.putBoolean(ScoredNetwork.EXTRA_HAS_CAPTIVE_PORTAL,
+                attributes.putBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL,
                         "1".equals(splitScore[3]));
             }
 

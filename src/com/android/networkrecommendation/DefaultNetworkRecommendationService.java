@@ -24,15 +24,20 @@ import android.net.NetworkRecommendationProvider;
 import android.net.NetworkScoreManager;
 import android.net.RecommendationRequest;
 import android.net.RecommendationResult;
+import android.net.RssiCurve;
 import android.net.ScoredNetwork;
+import android.net.WifiKey;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.text.TextUtils;
+import android.util.ArrayMap;
 
 import com.android.internal.annotations.GuardedBy;
+import com.android.internal.annotations.VisibleForTesting;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -46,6 +51,23 @@ import java.util.List;
  * to the RecommendedNetworkEvaluator, regardless of configuration point.
  *
  * This recommender is not yet recommended for non-development devices.
+ *
+ * To debug:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore $SCORE
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService clear
+ *
+ * curve, metered, captive portal are optional, as expressed by an empty value.
+ * SCORE: "Quoted SSID",bssid|$RSSI_CURVE|metered|captivePortal
+ * RSSI_CURVE: start,bucketWidth,score,score,score,score
+ * RSSI_CURVE:
+ * Eg, A high quality, paid network with captive portal:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
+ *   '\"Paid\ Network\",aa:bb:cc:dd:ee:ff\|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,29,-128\|1\|1'
+ *
+ * Eg, My network, a high quality, unmetered network:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
+ *   '\"Free\ Network\",aa:bb:cc:dd:ee:ff\|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,29,-128\|0\|1'
  */
 public class DefaultNetworkRecommendationService extends Service {
     private static final String TAG = "DefaultNetRecSvc";
@@ -60,7 +82,8 @@ public class DefaultNetworkRecommendationService extends Service {
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
         mProvider = new DefaultNetworkRecommendationProvider(mHandler,
-                (NetworkScoreManager) getSystemService(Context.NETWORK_SCORE_SERVICE));
+                (NetworkScoreManager) getSystemService(Context.NETWORK_SCORE_SERVICE),
+                new ScoreStorage());
     }
 
     @Override
@@ -73,22 +96,61 @@ public class DefaultNetworkRecommendationService extends Service {
         mProvider.dump(fd, writer, args);
     }
 
+    /** Stores scores about networks. Initial implementation is in-memory-only. */
+    @VisibleForTesting
+    static class ScoreStorage {
+
+        private final Object mScoresLock = new Object();
+        @GuardedBy("mScoresLock")
+        private final ArrayMap<NetworkKey, ScoredNetwork> mScores = new ArrayMap();
+
+        void addScore(ScoredNetwork scoredNetwork) {
+            synchronized (mScoresLock) {
+                mScores.put(scoredNetwork.networkKey, scoredNetwork);
+            }
+        }
+
+        ScoredNetwork get(NetworkKey key) {
+            synchronized (mScoresLock) {
+                return mScores.get(key);
+            }
+        }
+
+        void clear() {
+            synchronized (mScoresLock) {
+                mScores.clear();
+            }
+        }
+
+        void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
+            synchronized (mScoresLock) {
+                for (ScoredNetwork score : mScores.values()) {
+                    writer.println("" + score);
+                }
+            }
+        }
+    }
+
+    @VisibleForTesting
     static class DefaultNetworkRecommendationProvider
             extends NetworkRecommendationProvider {
 
         private final NetworkScoreManager mScoreManager;
+        private final ScoreStorage mStorage;
 
-        @GuardedBy("this")
+        private final Object mStatsLock = new Object();
+        @GuardedBy("mStatsLock")
         private int mRecommendationCounter = 0;
-        @GuardedBy("this")
+        @GuardedBy("mStatsLock")
         private WifiConfiguration mLastRecommended = null;
-        @GuardedBy("this")
+        @GuardedBy("mStatsLock")
         private int mScoreCounter = 0;
 
         public DefaultNetworkRecommendationProvider(Handler handler,
-                NetworkScoreManager scoreManager) {
+                NetworkScoreManager scoreManager, ScoreStorage storage) {
             super(handler);
             mScoreManager = scoreManager;
+            mStorage = storage;
         }
 
         /** Recommend the wireless network with the highest RSSI. */
@@ -128,7 +190,7 @@ public class DefaultNetworkRecommendationService extends Service {
             recommendedConfig.SSID = "\"" + recommendedScanResult.SSID + "\"";
             recommendedConfig.BSSID = recommendedScanResult.BSSID;
             recommendedConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
-            synchronized (this) {
+            synchronized (mStatsLock) {
                 mLastRecommended = recommendedConfig;
                 mRecommendationCounter++;
             }
@@ -137,7 +199,7 @@ public class DefaultNetworkRecommendationService extends Service {
 
         /** Score networks based on a few properties ... */
         public void onRequestScores(NetworkKey[] networks) {
-            synchronized (this) {
+            synchronized (mStatsLock) {
                 mScoreCounter++;
             }
             List<ScoredNetwork> scoredNetworks = new ArrayList();
@@ -148,22 +210,49 @@ public class DefaultNetworkRecommendationService extends Service {
                 if (key.type != NetworkKey.TYPE_WIFI) {
                     continue;
                 }
-
-                // TODO: Develop a scoring algorithm.
-                //ScoredNetwork score = new ScoredNetwork(key, null, false /* meteredHint */,
-                //        new Bundle());
-                //scoredNetworks.add(score);
             }
-            mScoreManager.updateScores(
-                    scoredNetworks.toArray(new ScoredNetwork[scoredNetworks.size()]));
         }
 
         void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
-            synchronized (this) {
-                writer.print("Recommendation requests: " + mRecommendationCounter);
-                writer.print("Last Recommended: " + mLastRecommended);
-                writer.print("Score requests: " + mScoreCounter);
+            for (int i = 0; i < args.length; i++) {
+                if ("clear".equals(args[i])) {
+                    i++;
+                    mStorage.clear();
+                } else if ("addScore".equals(args[i])) {
+                    i++;
+                    mStorage.addScore(parseScore(args[i]));
+                }
             }
+            synchronized (mStatsLock) {
+                writer.println("Recommendation requests: " + mRecommendationCounter);
+                writer.println("Last Recommended: " + mLastRecommended);
+                writer.println("Score requests: " + mScoreCounter);
+            }
+        }
+
+        @VisibleForTesting
+        static ScoredNetwork parseScore(String score) {
+            String[] splitScore = score.split("\\|");
+            String[] splitWifiKey = splitScore[0].split(",");
+            NetworkKey networkKey = new NetworkKey(
+                    new WifiKey(splitWifiKey[0], splitWifiKey[1]));
+
+            boolean meteredHint = "1".equals(splitScore[2]);
+            Bundle attributes = new Bundle();
+            if (!TextUtils.isEmpty(splitScore[3])) {
+                attributes.putBoolean(ScoredNetwork.EXTRA_HAS_CAPTIVE_PORTAL,
+                        "1".equals(splitScore[3]));
+            }
+
+            String[] splitRssiCurve = splitScore[1].split(",");
+            int start = Integer.valueOf(splitRssiCurve[0]);
+            int bucketWidth = Integer.valueOf(splitRssiCurve[1]);
+            byte[] rssiBuckets = new byte[splitRssiCurve.length - 2];
+            for (int i = 2; i < splitRssiCurve.length; i++) {
+                rssiBuckets[i - 2] = Integer.valueOf(splitRssiCurve[i]).byteValue();
+            }
+            RssiCurve rssiCurve = new RssiCurve(start, bucketWidth, rssiBuckets, 0);
+            return new ScoredNetwork(networkKey, rssiCurve, meteredHint, attributes);
         }
     }
 }

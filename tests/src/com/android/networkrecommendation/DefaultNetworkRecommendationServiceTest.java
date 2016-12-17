@@ -19,15 +19,19 @@ package com.android.networkrecommendation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import android.content.Intent;
 import android.net.INetworkRecommendationProvider;
 import android.net.NetworkCapabilities;
+import android.net.NetworkKey;
 import android.net.NetworkRecommendationProvider;
 import android.net.NetworkScoreManager;
 import android.net.RecommendationRequest;
 import android.net.RecommendationResult;
+import android.net.WifiKey;
 import android.net.wifi.ScanResult;
+import android.net.wifi.WifiConfiguration;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.IRemoteCallback;
@@ -87,19 +91,20 @@ public class DefaultNetworkRecommendationServiceTest {
         }
     }
 
+    /**
+     * Assert that when we make a request we get a response with the proper sequence.
+     * <p />
+     * We do not assert the config given to us, because we're simply verifying the behavior of
+     * this service interacting with the provider. For recommendation tests, see
+     * {@link DefaultNetworkRecommendationProviderTest}.
+     */
     @Test
-    public void basicRecommendation() throws Exception {
+    public void requestRecommendation() throws Exception {
         INetworkRecommendationProvider service = bind();
 
         ScanResult[] scanResults = new ScanResult[5];
         for (int i = 0; i < 5; i++) {
-            ScanResult scanResult = new ScanResult();
-            scanResult.level = i;
-            scanResult.SSID = "ssid-" + i;
-            scanResult.BSSID = "aa:bb:cc:dd:ee:0" + i;
-            scanResult.capabilities = "[ESS]";
-            scanResult.timestamp = SystemClock.elapsedRealtime() * 1000;
-            scanResults[i] = scanResult;
+            scanResults[i] = Util.createMockScanResult(i);
         }
 
         RecommendationRequest request = new RecommendationRequest.Builder()
@@ -111,44 +116,38 @@ public class DefaultNetworkRecommendationServiceTest {
         Result result = requestRecommendation(service, request, SEQUENCE_ID);
         synchronized (result) {
             assertEquals(result.sequence, SEQUENCE_ID);
-            assertNotNull("Expected a network recommendation, received null.",
-                    result.recommendation.getWifiConfiguration());
-            assertEquals("\"ssid-4\"", result.recommendation.getWifiConfiguration().SSID);
         }
     }
 
     @Test
-    public void noRecommendationWithNoOpenNetworks() throws Exception {
+    public void scoreNetworks() throws Exception {
         INetworkRecommendationProvider service = bind();
+        service.requestScores(new NetworkKey[]{new NetworkKey(new WifiKey("\"ProperlyQuoted\"",
+                "aa:bb:cc:dd:ee:ff"))});
+    }
 
-        ScanResult[] scanResults = new ScanResult[2];
-        for (int i = 0; i < 2; i++) {
-            ScanResult scanResult = new ScanResult();
-            scanResult.level = i;
-            scanResult.SSID = "ssid-" + i;
-            scanResult.BSSID = "aa:bb:cc:dd:ee:0" + i;
-            scanResult.capabilities = "[ESS][WPAOTHERTHING]";
-            scanResult.timestamp = SystemClock.elapsedRealtime() * 1000;
-            scanResults[i] = scanResult;
-        }
+    @Test
+    public void scoreNetworks_empty() throws Exception {
+        INetworkRecommendationProvider service = bind();
+        service.requestScores(new NetworkKey[]{});
+    }
 
-        RecommendationRequest request = new RecommendationRequest.Builder()
-                .setScanResults(scanResults)
-                .setNetworkCapabilities(new NetworkCapabilities().removeCapability(
-                        NetworkCapabilities.NET_CAPABILITY_TRUSTED))
-                .build();
-
-        Result result = requestRecommendation(service, request, SEQUENCE_ID);
-        synchronized (result) {
-            assertEquals(result.sequence, SEQUENCE_ID);
-            assertNull(result.recommendation.getWifiConfiguration());
+    @Test
+    public void scoreNetworks_invalid() throws Exception {
+        INetworkRecommendationProvider service = bind();
+        try {
+            service.requestScores(new NetworkKey[]{
+                    new NetworkKey(new WifiKey("ImproperlyQuoted", "aa:bb:cc:dd:ee:ff"))});
+            fail("An invalid SSID should throw an exception.");
+        } catch (IllegalArgumentException e) {
+            // Expected.
         }
     }
 
     /**
      * Make a network recommendation request. Be sure to synchronize on the result to access its
      * values properly.
-     * */
+     */
     private Result requestRecommendation(INetworkRecommendationProvider service,
             RecommendationRequest request, int seqId) throws RemoteException, InterruptedException {
         final Result result = new Result();

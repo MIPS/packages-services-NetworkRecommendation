@@ -2,13 +2,10 @@ package com.android.networkrecommendation;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import android.content.Context;
 import android.net.NetworkCapabilities;
 import android.net.NetworkKey;
 import android.net.NetworkScoreManager;
@@ -24,19 +21,20 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
-import com.android.networkrecommendation.DefaultNetworkRecommendationService
-        .DefaultNetworkRecommendationProvider;
+import com.android.networkrecommendation.DefaultNetworkRecommendationService.DefaultNetworkRecommendationProvider;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 /**
  * Tests the recommendation provider directly, to test internals of the provider rather than the
@@ -74,19 +72,19 @@ public class DefaultNetworkRecommendationProviderTest {
 
     @Mock
     private DefaultNetworkRecommendationProvider.CallbackWrapper mCallback;
-    private DefaultNetworkRecommendationService.ScoreStorage mStorage;
+
+    @Mock
     private NetworkScoreManager mNetworkScoreManager;
+
+    private DefaultNetworkRecommendationService.ScoreStorage mStorage;
     private DefaultNetworkRecommendationProvider mProvider;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-        mStorage = new DefaultNetworkRecommendationService.ScoreStorage();
-        mNetworkScoreManager =
-                (NetworkScoreManager) InstrumentationRegistry.getTargetContext().getSystemService(
-                        Context.NETWORK_SCORE_SERVICE);
         mProvider = new DefaultNetworkRecommendationProvider(
-                new Handler(Looper.getMainLooper()), mNetworkScoreManager, mStorage);
+                new Handler(Looper.getMainLooper()), mNetworkScoreManager,
+                new DefaultNetworkRecommendationService.ScoreStorage());
     }
 
     @Test
@@ -99,7 +97,7 @@ public class DefaultNetworkRecommendationProviderTest {
 
         // For now we add directly to storage, but when we start calling
         // networkScoreManager.updateScores, we'll have to adjust this test.
-        mStorage.addScore(GOOD_METERED_NETWORK);
+        mProvider.addScoreForTest(GOOD_METERED_NETWORK);
         {
             ScanResult scanResult = new ScanResult();
             scanResult.level = 115;
@@ -122,7 +120,7 @@ public class DefaultNetworkRecommendationProviderTest {
                         NetworkCapabilities.NET_CAPABILITY_TRUSTED))
                 .build();
 
-        RecommendationResult result = verifyAndCaptureResult(mProvider, request);
+        RecommendationResult result = verifyAndCaptureResult(request);
         assertEquals(GOOD_METERED_NETWORK.networkKey.wifiKey.ssid,
                 result.getWifiConfiguration().SSID);
     }
@@ -139,7 +137,7 @@ public class DefaultNetworkRecommendationProviderTest {
                 .setCurrentRecommendedWifiConfig(expectedConfig)
                 .build();
 
-        RecommendationResult result = verifyAndCaptureResult(mProvider, request);
+        RecommendationResult result = verifyAndCaptureResult(request);
         assertEquals(request.getCurrentSelectedConfig(), result.getWifiConfiguration());
     }
 
@@ -153,7 +151,7 @@ public class DefaultNetworkRecommendationProviderTest {
                         NetworkCapabilities.NET_CAPABILITY_TRUSTED))
                 .build();
 
-        RecommendationResult result = verifyAndCaptureResult(mProvider, request);
+        RecommendationResult result = verifyAndCaptureResult(request);
         assertNull(result.getWifiConfiguration());
     }
 
@@ -162,12 +160,26 @@ public class DefaultNetworkRecommendationProviderTest {
         NetworkKey[] keys =
                 new NetworkKey[]{GOOD_METERED_NETWORK.networkKey, GOOD_CAPTIVE_NETWORK.networkKey};
         mProvider.onRequestScores(keys);
+
+        verify(mNetworkScoreManager).updateScores(Mockito.any());
     }
 
     @Test
-    public void parseManualScores_goodPaid() {
-        ScoredNetwork score =
-                DefaultNetworkRecommendationProvider.parseScore(GOOD_METERED_NETWORK_STRING);
+    public void scoreNetworks_empty() throws Exception {
+        NetworkKey[] keys = new NetworkKey[]{};
+        mProvider.onRequestScores(keys);
+
+        verify(mNetworkScoreManager, times(0)).updateScores(Mockito.any());
+    }
+
+    @Test
+    public void dumpAddScores() {
+        String[] args = {"addScore", GOOD_METERED_NETWORK_STRING};
+        mProvider.dump(null /* fd */, new PrintWriter(new StringWriter()), args);
+
+        ScoredNetwork[] scoredNetworks = verifyAndCaptureScoredNetworks();
+        assertEquals(1, scoredNetworks.length);
+        ScoredNetwork score = scoredNetworks[0];
 
         assertEquals(GOOD_METERED_NETWORK.networkKey.wifiKey.ssid, score.networkKey.wifiKey.ssid);
         assertEquals(GOOD_METERED_NETWORK.networkKey.wifiKey.bssid, score.networkKey.wifiKey.bssid);
@@ -183,9 +195,13 @@ public class DefaultNetworkRecommendationProviderTest {
     }
 
     @Test
-    public void parseManualScores_goodCaptivePortal() {
-        ScoredNetwork score =
-                DefaultNetworkRecommendationProvider.parseScore(GOOD_CAPTIVE_NETWORK_STRING);
+    public void dumpAddScores_goodCaptivePortal() {
+        String[] args = {"addScore", GOOD_CAPTIVE_NETWORK_STRING};
+        mProvider.dump(null /* fd */, new PrintWriter(new StringWriter()), args);
+
+        ScoredNetwork[] scoredNetworks = verifyAndCaptureScoredNetworks();
+        assertEquals(1, scoredNetworks.length);
+        ScoredNetwork score = scoredNetworks[0];
 
         assertEquals(GOOD_CAPTIVE_NETWORK.networkKey.wifiKey.ssid, score.networkKey.wifiKey.ssid);
         assertEquals(GOOD_CAPTIVE_NETWORK.networkKey.wifiKey.bssid, score.networkKey.wifiKey.bssid);
@@ -202,14 +218,20 @@ public class DefaultNetworkRecommendationProviderTest {
     }
 
     private RecommendationResult verifyAndCaptureResult(
-            DefaultNetworkRecommendationProvider provider,
             RecommendationRequest request) {
-        provider.doOnRequestRecommendation(request, mCallback);
+        mProvider.doOnRequestRecommendation(request, mCallback);
 
         ArgumentCaptor<RecommendationResult> resultCaptor =
                 ArgumentCaptor.forClass(RecommendationResult.class);
         verify(mCallback).onResult(resultCaptor.capture());
 
+        return resultCaptor.getValue();
+    }
+
+    private ScoredNetwork[] verifyAndCaptureScoredNetworks() {
+        ArgumentCaptor<ScoredNetwork[]> resultCaptor = ArgumentCaptor.forClass(
+                ScoredNetwork[].class);
+        verify(mNetworkScoreManager).updateScores(resultCaptor.capture());
         return resultCaptor.getValue();
     }
 }

@@ -232,15 +232,34 @@ public class DefaultNetworkRecommendationService extends Service {
             synchronized (mStatsLock) {
                 mScoreCounter++;
             }
-            List<ScoredNetwork> scoredNetworks = new ArrayList();
+            List<ScoredNetwork> scoredNetworks = new ArrayList<>();
             for (int i = 0; i < networks.length; i++) {
                 NetworkKey key = networks[i];
 
-                // We only want to score wifi networks at the moment.
-                if (key.type != NetworkKey.TYPE_WIFI) {
+                // Score a network if we know about it.
+                ScoredNetwork scoredNetwork = mStorage.get(key);
+                if (scoredNetwork != null) {
+                    scoredNetworks.add(scoredNetwork);
                     continue;
                 }
+
+                // We only want to score wifi networks at the moment.
+                if (key.type != NetworkKey.TYPE_WIFI) {
+                    scoredNetworks.add(new ScoredNetwork(key, null, false /* meteredHint */));
+                    continue;
+                }
+
+                // We don't know about this network, even though its a wifi network. Inject
+                // an empty score to satisfy the cache.
+                scoredNetworks.add(new ScoredNetwork(key, null, false /* meteredHint */));
+                continue;
             }
+            if (scoredNetworks.isEmpty()) {
+                return;
+            }
+
+            if (DEBUG) Log.d(TAG, "Scored networks: " + scoredNetworks.toString());
+            safelyUpdateScores(scoredNetworks.toArray(new ScoredNetwork[scoredNetworks.size()]));
         }
 
         void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
@@ -253,7 +272,7 @@ public class DefaultNetworkRecommendationService extends Service {
                 } else if ("addScore".equals(args[i])) {
                     i++;
                     ScoredNetwork scoredNetwork = parseScore(args[i]);
-                    mStorage.addScore(scoredNetwork);
+                    addScoreForTest(scoredNetwork);
                     writer.println("Added: " + scoredNetwork);
                     return;
                 } else {
@@ -269,7 +288,22 @@ public class DefaultNetworkRecommendationService extends Service {
         }
 
         @VisibleForTesting
-        static ScoredNetwork parseScore(String score) {
+        void addScoreForTest(ScoredNetwork scoredNetwork) {
+            mStorage.addScore(scoredNetwork);
+            safelyUpdateScores(new ScoredNetwork[] {scoredNetwork});
+        }
+
+        private void safelyUpdateScores(ScoredNetwork[] networkScores) {
+            // Depending on races, etc, we might be alive when not the active scorer. Safely catch
+            // and ignore security exceptions
+            try {
+                mScoreManager.updateScores(networkScores);
+            } catch (SecurityException e) {
+                if (DEBUG) Log.d(TAG, "Tried to update scores when not the active scorer.");
+            }
+        }
+
+        private static ScoredNetwork parseScore(String score) {
             String[] splitScore = score.split("\\|");
             String[] splitWifiKey = splitScore[0].split(",");
             NetworkKey networkKey = new NetworkKey(
@@ -297,7 +331,7 @@ public class DefaultNetworkRecommendationService extends Service {
          * Add quotes to ScanResult ssids. WifiConfigurations, WifiKeys and ScoredNetworks have the
          * SSID quoted but scan results don't.
          */
-        private String quoteSsid(ScanResult scanResult) {
+        private static String quoteSsid(ScanResult scanResult) {
             if (scanResult.wifiSsid != null) {
                 return "\"" + scanResult.wifiSsid.toString() + "\"";
             } else if (scanResult.SSID != null) {

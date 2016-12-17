@@ -35,6 +35,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.ArrayMap;
+import android.util.Log;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
@@ -60,17 +61,21 @@ import java.util.List;
  * curve, metered, captive portal are optional, as expressed by an empty value.
  * SCORE: "Quoted SSID",bssid|$RSSI_CURVE|metered|captivePortal
  * RSSI_CURVE: start,bucketWidth,score,score,score,score
- * RSSI_CURVE:
+ *
  * Eg, A high quality, paid network with captive portal:
  * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
- *   '\"Paid\ Network\",aa:bb:cc:dd:ee:ff\|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,29,-128\|1\|1'
+ * '\"Metered\",aa:bb:cc:dd:ee:ff\|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,
+ * 29,-128\|1\|1'
  *
  * Eg, My network, a high quality, unmetered network:
  * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
- *   '\"Free\ Network\",aa:bb:cc:dd:ee:ff\|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,29,-128\|0\|1'
+ * '\"Captive\",aa:bb:cc:dd:ee:ff\|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,
+ * 29,-128\|0\|1'
  */
 public class DefaultNetworkRecommendationService extends Service {
     private static final String TAG = "DefaultNetRecSvc";
+    private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
+    private static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
     private HandlerThread mHandlerThread;
     private Handler mHandler;
@@ -98,41 +103,41 @@ public class DefaultNetworkRecommendationService extends Service {
 
     /** Stores scores about networks. Initial implementation is in-memory-only. */
     @VisibleForTesting
-    static class ScoreStorage {
+    public static class ScoreStorage {
 
-        private final Object mScoresLock = new Object();
-        @GuardedBy("mScoresLock")
+        @GuardedBy("mScores")
         private final ArrayMap<NetworkKey, ScoredNetwork> mScores = new ArrayMap();
 
-        void addScore(ScoredNetwork scoredNetwork) {
-            synchronized (mScoresLock) {
+        public void addScore(ScoredNetwork scoredNetwork) {
+            if (DEBUG) Log.d(TAG, "addScore: " + scoredNetwork);
+            synchronized (mScores) {
                 mScores.put(scoredNetwork.networkKey, scoredNetwork);
             }
         }
 
-        ScoredNetwork get(NetworkKey key) {
-            synchronized (mScoresLock) {
+        public ScoredNetwork get(NetworkKey key) {
+            synchronized (mScores) {
                 return mScores.get(key);
             }
         }
 
-        void clear() {
-            synchronized (mScoresLock) {
+        public void clear() {
+            synchronized (mScores) {
                 mScores.clear();
             }
         }
 
-        void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
-            synchronized (mScoresLock) {
+        public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
+            synchronized (mScores) {
                 for (ScoredNetwork score : mScores.values()) {
-                    writer.println("" + score);
+                    writer.println(score);
                 }
             }
         }
     }
 
     @VisibleForTesting
-    static class DefaultNetworkRecommendationProvider
+    public static class DefaultNetworkRecommendationProvider
             extends NetworkRecommendationProvider {
 
         private final NetworkScoreManager mScoreManager;
@@ -157,43 +162,68 @@ public class DefaultNetworkRecommendationService extends Service {
         @Override
         public void onRequestRecommendation(RecommendationRequest request,
                 NetworkRecommendationProvider.ResultCallback callback) {
+            doOnRequestRecommendation(request, new CallbackWrapper(callback));
+        }
+
+        /** Recommend the wireless network with the best score vs rssi curve. */
+        @VisibleForTesting
+        void doOnRequestRecommendation(RecommendationRequest request,
+                CallbackWrapper callback) {
             ScanResult recommendedScanResult = null;
+            int recommendedScore = Integer.MIN_VALUE;
+
             ScanResult[] results = request.getScanResults();
             for (int i = 0; i < results.length; i++) {
-                ScanResult result = results[i];
+                final ScanResult scanResult = results[i];
+                if (VERBOSE) Log.v(TAG, "Scan: " + scanResult + " " + i);
 
                 // We only want to recommend open networks. This check is taken from
                 // places like WifiNotificationController and will be extracted to ScanResult in
                 // a future CL.
-                if (!"[ESS]".equals(result.capabilities)) {
+                if (!"[ESS]".equals(scanResult.capabilities)) {
+                    if (VERBOSE) Log.v(TAG, "Discarding closed network: " + scanResult);
                     continue;
                 }
-                // If we don't have a candidate recommendation, use the first network we see.
-                if (recommendedScanResult == null) {
-                    recommendedScanResult = result;
+
+                final NetworkKey networkKey = new NetworkKey(
+                        new WifiKey(quoteSsid(scanResult), scanResult.BSSID));
+                if (VERBOSE) Log.v(TAG, "Evaluating network: " + networkKey);
+
+                // We will only score networks we know about.
+                final ScoredNetwork network = mStorage.get(networkKey);
+                if (network == null) {
+                    if (VERBOSE) Log.v(TAG, "Discarding unscored network: " + scanResult);
                     continue;
                 }
-                // If the candidate network has a higher rssi, use it.
-                if (result.level > recommendedScanResult.level) {
-                    recommendedScanResult = result;
+
+                final int score = network.rssiCurve.lookupScore(scanResult.level);
+                if (VERBOSE) Log.d(TAG, "Scored " + scanResult + ": " + score);
+                if (score > recommendedScore) {
+                    recommendedScanResult = scanResult;
+                    recommendedScore = score;
+                    if (VERBOSE) Log.d(TAG, "New recommended network: " + scanResult);
                     continue;
                 }
             }
 
+            // If we ended up without a recommendation, recommend the provided configuration
+            // instead. If we wanted the platform to avoid this network, too, we could send back an
+            // empty recommendation.
+            WifiConfiguration recommendedConfig;
             if (recommendedScanResult == null) {
-                callback.onResult(new RecommendationResult(null));
-                return;
+                recommendedConfig = request.getCurrentSelectedConfig();
+            } else {
+                // Build a configuration based on the scan.
+                recommendedConfig = new WifiConfiguration();
+                recommendedConfig.SSID = quoteSsid(recommendedScanResult);
+                recommendedConfig.BSSID = recommendedScanResult.BSSID;
+                recommendedConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
             }
-
-            // Build a configuration based on the scan.
-            WifiConfiguration recommendedConfig = new WifiConfiguration();
-            recommendedConfig.SSID = "\"" + recommendedScanResult.SSID + "\"";
-            recommendedConfig.BSSID = recommendedScanResult.BSSID;
-            recommendedConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
             synchronized (mStatsLock) {
                 mLastRecommended = recommendedConfig;
                 mRecommendationCounter++;
             }
+            if (DEBUG) Log.d(TAG, "Recommending network: " + recommendedConfig);
             callback.onResult(new RecommendationResult(recommendedConfig));
         }
 
@@ -218,11 +248,19 @@ public class DefaultNetworkRecommendationService extends Service {
                 if ("clear".equals(args[i])) {
                     i++;
                     mStorage.clear();
+                    writer.println("Clearing store");
+                    return;
                 } else if ("addScore".equals(args[i])) {
                     i++;
-                    mStorage.addScore(parseScore(args[i]));
+                    ScoredNetwork scoredNetwork = parseScore(args[i]);
+                    mStorage.addScore(scoredNetwork);
+                    writer.println("Added: " + scoredNetwork);
+                    return;
+                } else {
+                    writer.println("Unrecognized command: " + args[i]);
                 }
             }
+            mStorage.dump(fd, writer, args);
             synchronized (mStatsLock) {
                 writer.println("Recommendation requests: " + mRecommendationCounter);
                 writer.println("Last Recommended: " + mLastRecommended);
@@ -253,6 +291,34 @@ public class DefaultNetworkRecommendationService extends Service {
             }
             RssiCurve rssiCurve = new RssiCurve(start, bucketWidth, rssiBuckets, 0);
             return new ScoredNetwork(networkKey, rssiCurve, meteredHint, attributes);
+        }
+
+        /**
+         * Add quotes to ScanResult ssids. WifiConfigurations, WifiKeys and ScoredNetworks have the
+         * SSID quoted but scan results don't.
+         */
+        private String quoteSsid(ScanResult scanResult) {
+            if (scanResult.wifiSsid != null) {
+                return "\"" + scanResult.wifiSsid.toString() + "\"";
+            } else if (scanResult.SSID != null) {
+                return "\"" + scanResult.SSID + "\"";
+            } else {
+                throw new IllegalArgumentException("ScanResult is missing an SSID.");
+            }
+        }
+
+        /** Wrapper for testing. TODO: Remove when ResultCallback is not final b/33704062 */
+        @VisibleForTesting
+        public static class CallbackWrapper {
+            private ResultCallback mCallback;
+
+            public CallbackWrapper(ResultCallback callback) {
+                mCallback = callback;
+            }
+
+            public void onResult(RecommendationResult result) {
+                mCallback.onResult(result);
+            }
         }
     }
 }

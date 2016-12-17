@@ -299,7 +299,7 @@ public class DefaultNetworkRecommendationService extends Service {
             try {
                 mScoreManager.updateScores(networkScores);
             } catch (SecurityException e) {
-                if (DEBUG) Log.d(TAG, "Tried to update scores when not the active scorer.");
+                Log.w(TAG, "Tried to update scores when not the active scorer.");
             }
         }
 

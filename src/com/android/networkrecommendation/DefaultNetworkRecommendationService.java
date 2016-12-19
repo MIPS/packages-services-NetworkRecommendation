@@ -173,37 +173,41 @@ public class DefaultNetworkRecommendationService extends Service {
             int recommendedScore = Integer.MIN_VALUE;
 
             ScanResult[] results = request.getScanResults();
-            for (int i = 0; i < results.length; i++) {
-                final ScanResult scanResult = results[i];
-                if (VERBOSE) Log.v(TAG, "Scan: " + scanResult + " " + i);
+            if (results != null) {
+                for (int i = 0; i < results.length; i++) {
+                    final ScanResult scanResult = results[i];
+                    if (VERBOSE) Log.v(TAG, "Scan: " + scanResult + " " + i);
 
-                // We only want to recommend open networks. This check is taken from
-                // places like WifiNotificationController and will be extracted to ScanResult in
-                // a future CL.
-                if (!"[ESS]".equals(scanResult.capabilities)) {
-                    if (VERBOSE) Log.v(TAG, "Discarding closed network: " + scanResult);
-                    continue;
+                    // We only want to recommend open networks. This check is taken from
+                    // places like WifiNotificationController and will be extracted to ScanResult in
+                    // a future CL.
+                    if (!"[ESS]".equals(scanResult.capabilities)) {
+                        if (VERBOSE) Log.v(TAG, "Discarding closed network: " + scanResult);
+                        continue;
+                    }
+
+                    final NetworkKey networkKey = new NetworkKey(
+                            new WifiKey(quoteSsid(scanResult), scanResult.BSSID));
+                    if (VERBOSE) Log.v(TAG, "Evaluating network: " + networkKey);
+
+                    // We will only score networks we know about.
+                    final ScoredNetwork network = mStorage.get(networkKey);
+                    if (network == null) {
+                        if (VERBOSE) Log.v(TAG, "Discarding unscored network: " + scanResult);
+                        continue;
+                    }
+
+                    final int score = network.rssiCurve.lookupScore(scanResult.level);
+                    if (VERBOSE) Log.d(TAG, "Scored " + scanResult + ": " + score);
+                    if (score > recommendedScore) {
+                        recommendedScanResult = scanResult;
+                        recommendedScore = score;
+                        if (VERBOSE) Log.d(TAG, "New recommended network: " + scanResult);
+                        continue;
+                    }
                 }
-
-                final NetworkKey networkKey = new NetworkKey(
-                        new WifiKey(quoteSsid(scanResult), scanResult.BSSID));
-                if (VERBOSE) Log.v(TAG, "Evaluating network: " + networkKey);
-
-                // We will only score networks we know about.
-                final ScoredNetwork network = mStorage.get(networkKey);
-                if (network == null) {
-                    if (VERBOSE) Log.v(TAG, "Discarding unscored network: " + scanResult);
-                    continue;
-                }
-
-                final int score = network.rssiCurve.lookupScore(scanResult.level);
-                if (VERBOSE) Log.d(TAG, "Scored " + scanResult + ": " + score);
-                if (score > recommendedScore) {
-                    recommendedScanResult = scanResult;
-                    recommendedScore = score;
-                    if (VERBOSE) Log.d(TAG, "New recommended network: " + scanResult);
-                    continue;
-                }
+            } else {
+                Log.w(TAG, "Received null scan results in request.");
             }
 
             // If we ended up without a recommendation, recommend the provided configuration

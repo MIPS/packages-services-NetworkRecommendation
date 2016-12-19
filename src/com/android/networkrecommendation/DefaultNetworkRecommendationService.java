@@ -162,13 +162,6 @@ public class DefaultNetworkRecommendationService extends Service {
         @Override
         public void onRequestRecommendation(RecommendationRequest request,
                 NetworkRecommendationProvider.ResultCallback callback) {
-            doOnRequestRecommendation(request, new CallbackWrapper(callback));
-        }
-
-        /** Recommend the wireless network with the best score vs rssi curve. */
-        @VisibleForTesting
-        void doOnRequestRecommendation(RecommendationRequest request,
-                CallbackWrapper callback) {
             ScanResult recommendedScanResult = null;
             int recommendedScore = Integer.MIN_VALUE;
 
@@ -356,20 +349,6 @@ public class DefaultNetworkRecommendationService extends Service {
                 return "\"" + scanResult.SSID + "\"";
             } else {
                 throw new IllegalArgumentException("ScanResult is missing an SSID.");
-            }
-        }
-
-        /** Wrapper for testing. TODO: Remove when ResultCallback is not final b/33704062 */
-        @VisibleForTesting
-        public static class CallbackWrapper {
-            private ResultCallback mCallback;
-
-            public CallbackWrapper(ResultCallback callback) {
-                mCallback = callback;
-            }
-
-            public void onResult(RecommendationResult result) {
-                mCallback.onResult(result);
             }
         }
     }

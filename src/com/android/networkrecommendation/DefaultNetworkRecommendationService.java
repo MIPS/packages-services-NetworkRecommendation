@@ -227,7 +227,7 @@ public class DefaultNetworkRecommendationService extends Service {
                 mLastRecommended = recommendedConfig;
                 mRecommendationCounter++;
             }
-            if (DEBUG) Log.d(TAG, "Recommending network: " + recommendedConfig);
+            if (DEBUG) Log.d(TAG, "Recommending network: " + configToString(recommendedConfig));
             callback.onResult(new RecommendationResult(recommendedConfig));
         }
 
@@ -286,7 +286,7 @@ public class DefaultNetworkRecommendationService extends Service {
             mStorage.dump(fd, writer, args);
             synchronized (mStatsLock) {
                 writer.println("Recommendation requests: " + mRecommendationCounter);
-                writer.println("Last Recommended: " + mLastRecommended);
+                writer.println("Last Recommended: " + configToString(mLastRecommended));
                 writer.println("Score requests: " + mScoreCounter);
             }
         }
@@ -329,6 +329,20 @@ public class DefaultNetworkRecommendationService extends Service {
             }
             RssiCurve rssiCurve = new RssiCurve(start, bucketWidth, rssiBuckets, 0);
             return new ScoredNetwork(networkKey, rssiCurve, meteredHint, attributes);
+        }
+
+        /** Print a shorter config string, for dumpsys. */
+        private static String configToString(WifiConfiguration config) {
+            if (config == null) {
+                return null;
+            }
+            StringBuilder sb = new StringBuilder()
+                    .append("ID=").append(config.networkId)
+                    .append(",SSID=").append(config.SSID)
+                    .append(",useExternalScores=" ).append(config.useExternalScores)
+                    .append(",meteredHint=" ).append(config.meteredHint)
+                    .append(",meteredOverride=" ).append(config.meteredOverride);
+            return sb.toString();
         }
 
         /**

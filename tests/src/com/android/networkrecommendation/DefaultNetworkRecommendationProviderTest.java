@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 
 import android.net.NetworkCapabilities;
 import android.net.NetworkKey;
+import android.net.NetworkRecommendationProvider;
 import android.net.NetworkScoreManager;
 import android.net.RecommendationRequest;
 import android.net.RecommendationResult;
@@ -71,7 +72,7 @@ public class DefaultNetworkRecommendationProviderTest {
     }
 
     @Mock
-    private DefaultNetworkRecommendationProvider.CallbackWrapper mCallback;
+    private NetworkRecommendationProvider.ResultCallback mCallback;
 
     @Mock
     private NetworkScoreManager mNetworkScoreManager;
@@ -221,7 +222,7 @@ public class DefaultNetworkRecommendationProviderTest {
 
     private RecommendationResult verifyAndCaptureResult(
             RecommendationRequest request) {
-        mProvider.doOnRequestRecommendation(request, mCallback);
+        mProvider.onRequestRecommendation(request, mCallback);
 
         ArgumentCaptor<RecommendationResult> resultCaptor =
                 ArgumentCaptor.forClass(RecommendationResult.class);

@@ -130,6 +130,8 @@ public class DefaultNetworkRecommendationProviderTest {
         ScanResult[] scanResults = new ScanResult[0];
 
         WifiConfiguration expectedConfig = new WifiConfiguration();
+        expectedConfig.SSID = "ssid";
+        expectedConfig.BSSID = "bssid";
         RecommendationRequest request = new RecommendationRequest.Builder()
                 .setScanResults(scanResults)
                 .setNetworkCapabilities(new NetworkCapabilities().removeCapability(
@@ -138,7 +140,7 @@ public class DefaultNetworkRecommendationProviderTest {
                 .build();
 
         RecommendationResult result = verifyAndCaptureResult(request);
-        assertEquals(request.getCurrentSelectedConfig(), result.getWifiConfiguration());
+        assertEquals(expectedConfig, result.getWifiConfiguration());
     }
 
     @Test

@@ -213,22 +213,29 @@ public class DefaultNetworkRecommendationService extends Service {
             // If we ended up without a recommendation, recommend the provided configuration
             // instead. If we wanted the platform to avoid this network, too, we could send back an
             // empty recommendation.
-            WifiConfiguration recommendedConfig;
+            RecommendationResult recommendationResult;
             if (recommendedScanResult == null) {
-                recommendedConfig = request.getCurrentSelectedConfig();
+                if (request.getCurrentSelectedConfig() != null) {
+                    recommendationResult = RecommendationResult
+                        .createConnectRecommendation(request.getCurrentSelectedConfig());
+                } else {
+                    recommendationResult = RecommendationResult.createDoNotConnectRecommendation();
+                }
             } else {
                 // Build a configuration based on the scan.
-                recommendedConfig = new WifiConfiguration();
+                WifiConfiguration recommendedConfig = new WifiConfiguration();
                 recommendedConfig.SSID = quoteSsid(recommendedScanResult);
                 recommendedConfig.BSSID = recommendedScanResult.BSSID;
                 recommendedConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+                recommendationResult = RecommendationResult
+                    .createConnectRecommendation(recommendedConfig);
             }
             synchronized (mStatsLock) {
-                mLastRecommended = recommendedConfig;
+                mLastRecommended = recommendationResult.getWifiConfiguration();
                 mRecommendationCounter++;
             }
-            if (DEBUG) Log.d(TAG, "Recommending network: " + configToString(recommendedConfig));
-            callback.onResult(new RecommendationResult(recommendedConfig));
+            if (DEBUG) Log.d(TAG, "Recommending network: " + configToString(mLastRecommended));
+            callback.onResult(recommendationResult);
         }
 
         /** Score networks based on a few properties ... */

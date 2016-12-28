@@ -1,7 +1,24 @@
+/*
+ * Copyright (C) 2016 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.android.networkrecommendation;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -46,23 +63,22 @@ public class DefaultNetworkRecommendationProviderTest {
 
     private static final String GOOD_METERED_NETWORK_STRING_UNQUOTED = "Metered";
     private static final String GOOD_METERED_NETWORK_STRING = "\"Metered\",aa:bb:cc:dd:ee:ff" +
-            "|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,-128|1|0";
+            "|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,20,20,20,20,-128|1|0";
 
     private static final RssiCurve GOOD_METERED_NETWORK_CURVE = new RssiCurve(
             -150 /* start */, 10 /* bucketWidth */,
-            new byte[]{-128, -128, -128, -128, -128, -128, -128, -128, 29, 29, 29, 29, -128});
+            new byte[]{-128, -128, -128, -128, -128, -128, -128, -128, 20, 20, 20, 20, -128});
     private static final ScoredNetwork GOOD_METERED_NETWORK = new ScoredNetwork(
             new NetworkKey(new WifiKey("\"Metered\"", "aa:bb:cc:dd:ee:ff")),
             GOOD_METERED_NETWORK_CURVE, true /* meteredHint */, new Bundle());
 
     private static final String GOOD_CAPTIVE_NETWORK_STRING_UNQUOTED = "Captive";
     private static final String GOOD_CAPTIVE_NETWORK_STRING =
-            "\"Captive\",ff:ee:dd:cc:bb:aa|-160,18,-128,-128,-128,-128,-128,-128,31,31,31,-128|0|1";
+            "\"Captive\",ff:ee:dd:cc:bb:aa|-160,18,-128,-128,-128,-128,-128,-128,21,21,21,-128|0|1";
     private static final RssiCurve GOOD_CAPTIVE_NETWORK_CURVE = new RssiCurve(
             -160 /* start */, 18 /* bucketWidth */,
-            new byte[]{-128, -128, -128, -128, -128, -128, 31, 31, 31, -128});
+            new byte[]{-128, -128, -128, -128, -128, -128, 21, 21, 21, -128});
     private static final ScoredNetwork GOOD_CAPTIVE_NETWORK;
-
     static {
         Bundle attributes = new Bundle();
         attributes.putBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL, true);
@@ -70,6 +86,27 @@ public class DefaultNetworkRecommendationProviderTest {
                 new NetworkKey(new WifiKey("\"Captive\"", "ff:ee:dd:cc:bb:aa")),
                 GOOD_CAPTIVE_NETWORK_CURVE, false /* meteredHint */, attributes);
     }
+
+    private static final String ANY_NETWORK_STRING_UNQUOTED = "AnySsid";
+    private static final String ANY_NETWORK_STRING =
+            "\"AnySsid\",00:00:00:00:00:00|-160,18,-128,-128,-128,-128,-128,-128,22,22,22,-128|0|0";
+    private static final RssiCurve ANY_NETWORK_CURVE = new RssiCurve(
+            -160 /* start */, 18 /* bucketWidth */,
+            new byte[]{-128, -128, -128, -128, -128, -128, 22, 22, 22, -128});
+    private static final ScoredNetwork ANY_NETWORK = new ScoredNetwork(
+                new NetworkKey(new WifiKey("\"AnySsid\"", "ee:ee:ee:ee:ee:ee")),
+                ANY_NETWORK_CURVE, false /* meteredHint */, new Bundle());
+
+    private static final String ANY_NETWORK_SPECIFIC_STRING_UNQUOTED = "AnySsid";
+    private static final String ANY_NETWORK_SPECIFIC_STRING =
+            "\"AnySsid\",ee:ee:ee:ee:ee:ee|-160,18,-128,-128,-128,-128,-128,-128,23,23,23,-128|0|0";
+    private static final RssiCurve ANY_NETWORK_SPECIFIC_CURVE = new RssiCurve(
+            -160 /* start */, 18 /* bucketWidth */,
+            new byte[]{-128, -128, -128, -128, -128, -128, 23, 23, 23, -128});
+    private static final ScoredNetwork ANY_NETWORK_SPECIFIC = new ScoredNetwork(
+                new NetworkKey(new WifiKey("\"AnySsid\"", "ee:ee:ee:ee:ee:ee")),
+                ANY_NETWORK_SPECIFIC_CURVE, false /* meteredHint */, new Bundle());
+
 
     @Mock
     private NetworkRecommendationProvider.ResultCallback mCallback;
@@ -83,9 +120,9 @@ public class DefaultNetworkRecommendationProviderTest {
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        mStorage = new DefaultNetworkRecommendationService.ScoreStorage();
         mProvider = new DefaultNetworkRecommendationProvider(
-                new Handler(Looper.getMainLooper()), mNetworkScoreManager,
-                new DefaultNetworkRecommendationService.ScoreStorage());
+                new Handler(Looper.getMainLooper()), mNetworkScoreManager, mStorage);
     }
 
     @Test
@@ -218,6 +255,54 @@ public class DefaultNetworkRecommendationProviderTest {
         assertEquals(GOOD_CAPTIVE_NETWORK_CURVE.bucketWidth, score.rssiCurve.bucketWidth);
         assertArrayEquals(GOOD_CAPTIVE_NETWORK_CURVE.rssiBuckets,
                 score.rssiCurve.rssiBuckets);
+    }
+
+    @Test
+    public void dumpAddScores_anySsid() {
+        String[] args = {"addScore", ANY_NETWORK_STRING};
+        mProvider.dump(null /* fd */, new PrintWriter(new StringWriter()), args);
+
+        // We don't update the platform with the any bssid score, but we do store it.
+        verify(mNetworkScoreManager, times(0)).updateScores(Mockito.any());
+
+        // We do store and serve the score, though:
+        ScoredNetwork score = mStorage.get(ANY_NETWORK.networkKey);
+        assertNotNull(score);
+
+        assertEquals(ANY_NETWORK.networkKey, score.networkKey);
+        assertEquals(ANY_NETWORK.meteredHint, score.meteredHint);
+        assertEquals(
+                ANY_NETWORK.attributes.getBoolean(
+                    ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
+                score.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL));
+        assertEquals(ANY_NETWORK_CURVE.start, score.rssiCurve.start);
+        assertEquals(ANY_NETWORK_CURVE.bucketWidth, score.rssiCurve.bucketWidth);
+        assertArrayEquals(ANY_NETWORK_CURVE.rssiBuckets, score.rssiCurve.rssiBuckets);
+    }
+
+    @Test
+    public void dumpAddScores_anySsid_useMoreSpecific() {
+        mProvider.dump(null /* fd */, new PrintWriter(new StringWriter()),
+                new String[] {"addScore", ANY_NETWORK_STRING});
+        verify(mNetworkScoreManager, times(0)).updateScores(Mockito.any());
+
+        mProvider.dump(null /* fd */, new PrintWriter(new StringWriter()),
+                new String[] {"addScore", ANY_NETWORK_SPECIFIC_STRING});
+        verify(mNetworkScoreManager).updateScores(Mockito.any());
+
+        // We don't update the platform with the any bssid score, but we do store it.
+        ScoredNetwork score = mStorage.get(ANY_NETWORK.networkKey);
+        assertNotNull(score);
+
+        assertEquals(ANY_NETWORK_SPECIFIC.networkKey, score.networkKey);
+        assertEquals(ANY_NETWORK_SPECIFIC.meteredHint, score.meteredHint);
+        assertEquals(
+                ANY_NETWORK_SPECIFIC.attributes.getBoolean(
+                    ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
+                score.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL));
+        assertEquals(ANY_NETWORK_SPECIFIC_CURVE.start, score.rssiCurve.start);
+        assertEquals(ANY_NETWORK_SPECIFIC_CURVE.bucketWidth, score.rssiCurve.bucketWidth);
+        assertArrayEquals(ANY_NETWORK_SPECIFIC_CURVE.rssiBuckets, score.rssiCurve.rssiBuckets);
     }
 
     private RecommendationResult verifyAndCaptureResult(

@@ -41,8 +41,6 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.support.test.runner.AndroidJUnit4;
 
-import com.android.networkrecommendation.DefaultNetworkRecommendationService.DefaultNetworkRecommendationProvider;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -114,13 +112,13 @@ public class DefaultNetworkRecommendationProviderTest {
     @Mock
     private NetworkScoreManager mNetworkScoreManager;
 
-    private DefaultNetworkRecommendationService.ScoreStorage mStorage;
+    private DefaultNetworkRecommendationProvider.ScoreStorage mStorage;
     private DefaultNetworkRecommendationProvider mProvider;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-        mStorage = new DefaultNetworkRecommendationService.ScoreStorage();
+        mStorage = new DefaultNetworkRecommendationProvider.ScoreStorage();
         mProvider = new DefaultNetworkRecommendationProvider(
                 new Handler(Looper.getMainLooper()), mNetworkScoreManager, mStorage);
     }

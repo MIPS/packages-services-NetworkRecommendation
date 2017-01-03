@@ -48,34 +48,48 @@ import java.util.List;
 /**
  * Provides network recommendations for the platform.
  *
- * This example evaluates networks in a scan and picks the "least bad" network, returning a result
- * to the RecommendedNetworkEvaluator, regardless of configuration point.
+ * <p>This example evaluates networks in a scan and picks the "least bad" network, returning a
+ * result to the RecommendedNetworkEvaluator, regardless of configuration point.
  *
- * This recommender is not yet recommended for non-development devices.
+ * <p>This recommender is not yet recommended for non-development devices.
  *
- * To debug:
+ * <p>To debug:
  * $ adb shell dumpsys activity service DefaultNetworkRecommendationService
- * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore $SCORE
+ *
+ * <p>Clear stored scores:
  * $ adb shell dumpsys activity service DefaultNetworkRecommendationService clear
  *
- * curve, metered, captive portal are optional, as expressed by an empty value.
- * SCORE: "Quoted SSID",bssid|$RSSI_CURVE|metered|captivePortal
- * RSSI_CURVE: start,bucketWidth,score,score,score,score
+ * <p>Score a network:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore $SCORE
  *
- * Eg, A high quality, paid network with captive portal:
- * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
- * '\"Metered\",aa:bb:cc:dd:ee:ff\|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,
- * 29,-128\|1\|1'
+ * <p>SCORE: "Quoted SSID",bssid|$RSSI_CURVE|metered|captivePortal
  *
- * Eg, My network, a high quality, unmetered network:
+ * <p>RSSI_CURVE: start,bucketWidth,score,score,score,score,...
+ *
+ * <p>curve, metered and captive portal are optional, as expressed by an empty value.
+ *
+ * <p>All commands should be executed on one line, no spaces between each line of the command..
+ * <p>Eg, A high quality, paid network with captive portal:
  * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
- * '\"Captive\",aa:bb:cc:dd:ee:ff\|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,
- * 29,-128\|0\|1'
+ * '\"Metered\",aa:bb:cc:dd:ee:ff\|
+ * -150,10,-128,-128,-128,-128,-128,-128,-128,-128,27,27,27,27,27,-128\|1\|1'
+ *
+ * <p>Eg, A high quality, unmetered network with captive portal:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
+ * '\"Captive\",aa:bb:cc:dd:ee:ff\|
+ * -150,10,-128,-128,-128,-128,-128,-128,-128,-128,28,28,28,28,28,-128\|0\|1'
+ *
+ * <p>Eg, A high quality, unmetered network with any bssid:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
+ * '\"AnySsid\",00:00:00:00:00:00\|
+ * -150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,29,-128\|0\|0'
  */
 public class DefaultNetworkRecommendationService extends Service {
     private static final String TAG = "DefaultNetRecSvc";
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
     private static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
+
+    private static final String WILDCARD_MAC = "00:00:00:00:00:00";
 
     private HandlerThread mHandlerThread;
     private Handler mHandler;
@@ -103,11 +117,18 @@ public class DefaultNetworkRecommendationService extends Service {
 
     /** Stores scores about networks. Initial implementation is in-memory-only. */
     @VisibleForTesting
-    public static class ScoreStorage {
+    static class ScoreStorage {
 
         @GuardedBy("mScores")
         private final ArrayMap<NetworkKey, ScoredNetwork> mScores = new ArrayMap();
 
+        /**
+         * Store a score in storage.
+         *
+         * @param scoredNetwork the network to score.
+         *     If {@code scoredNetwork.networkKey.wifiKey.bssid} is "00:00:00:00:00:00", treat this
+         *     score as applying to any bssid with the provided ssid.
+         */
         public void addScore(ScoredNetwork scoredNetwork) {
             if (DEBUG) Log.d(TAG, "addScore: " + scoredNetwork);
             synchronized (mScores) {
@@ -117,7 +138,23 @@ public class DefaultNetworkRecommendationService extends Service {
 
         public ScoredNetwork get(NetworkKey key) {
             synchronized (mScores) {
-                return mScores.get(key);
+                // Try to find a score for the requested bssid.
+                ScoredNetwork scoredNetwork = mScores.get(key);
+                if (scoredNetwork != null) {
+                    return scoredNetwork;
+                }
+                // Try to find a score for a wildcard ssid.
+                NetworkKey wildcardKey = new NetworkKey(
+                        new WifiKey(key.wifiKey.ssid, WILDCARD_MAC));
+                scoredNetwork = mScores.get(wildcardKey);
+                if (scoredNetwork != null) {
+                    // If the fetched score was a wildcard score, construct a synthetic score
+                    // for the requested bssid and return it.
+                    return new ScoredNetwork(
+                            key, scoredNetwork.rssiCurve, scoredNetwork.meteredHint,
+                            scoredNetwork.attributes);
+                }
+                return null;
             }
         }
 
@@ -226,8 +263,8 @@ public class DefaultNetworkRecommendationService extends Service {
             synchronized (mStatsLock) {
                 mLastRecommended = recommendationResult.getWifiConfiguration();
                 mRecommendationCounter++;
+                if (DEBUG) Log.d(TAG, "Recommending network: " + configToString(mLastRecommended));
             }
-            if (DEBUG) Log.d(TAG, "Recommending network: " + configToString(mLastRecommended));
             callback.onResult(recommendationResult);
         }
 
@@ -270,7 +307,7 @@ public class DefaultNetworkRecommendationService extends Service {
             for (int i = 0; i < args.length; i++) {
                 if ("clear".equals(args[i])) {
                     i++;
-                    mStorage.clear();
+                    clearScoresForTest();
                     writer.println("Clearing store");
                     return;
                 } else if ("addScore".equals(args[i])) {
@@ -294,7 +331,15 @@ public class DefaultNetworkRecommendationService extends Service {
         @VisibleForTesting
         void addScoreForTest(ScoredNetwork scoredNetwork) {
             mStorage.addScore(scoredNetwork);
-            safelyUpdateScores(new ScoredNetwork[] {scoredNetwork});
+            if (!WILDCARD_MAC.equals(scoredNetwork.networkKey.wifiKey.bssid)) {
+                safelyUpdateScores(new ScoredNetwork[] {scoredNetwork});
+            }
+        }
+
+        @VisibleForTesting
+        void clearScoresForTest() {
+            mStorage.clear();
+            safelyClearScores();
         }
 
         private void safelyUpdateScores(ScoredNetwork[] networkScores) {
@@ -302,6 +347,16 @@ public class DefaultNetworkRecommendationService extends Service {
             // and ignore security exceptions
             try {
                 mScoreManager.updateScores(networkScores);
+            } catch (SecurityException e) {
+                Log.w(TAG, "Tried to update scores when not the active scorer.");
+            }
+        }
+
+        private void safelyClearScores() {
+            // Depending on races, etc, we might be alive when not the active scorer. Safely catch
+            // and ignore security exceptions
+            try {
+                mScoreManager.clearScores();
             } catch (SecurityException e) {
                 Log.w(TAG, "Tried to update scores when not the active scorer.");
             }

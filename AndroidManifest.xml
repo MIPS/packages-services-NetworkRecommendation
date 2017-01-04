@@ -24,9 +24,9 @@
     <application android:allowBackup="false"
                  android:directBootAware="true">
 
-        <!-- Only the platform should bind to this service, set exported to false. -->
+        <!-- Only the platform can bind to this service -->
         <service android:name=".DefaultNetworkRecommendationService"
-                 android:exported="false">
+                 android:permission="android.permission.BIND_NETWORK_RECOMMENDATION_SERVICE">
             <intent-filter>
                 <action android:name="android.net.action.RECOMMEND_NETWORKS" />
             </intent-filter>

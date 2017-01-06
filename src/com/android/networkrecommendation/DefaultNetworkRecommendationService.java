@@ -71,6 +71,7 @@ public class DefaultNetworkRecommendationService extends Service {
     private HandlerThread mHandlerThread;
     private Handler mHandler;
     private DefaultNetworkRecommendationProvider mProvider;
+    private WifiNotificationController mWifiNotificationController;
 
     @Override
     public void onCreate() {
@@ -80,6 +81,8 @@ public class DefaultNetworkRecommendationService extends Service {
         mProvider = new DefaultNetworkRecommendationProvider(mHandler,
                 (NetworkScoreManager) getSystemService(Context.NETWORK_SCORE_SERVICE),
                 new DefaultNetworkRecommendationProvider.ScoreStorage());
+        mWifiNotificationController = new WifiNotificationController(
+                this, mHandler.getLooper(), null);
     }
 
     @Override
@@ -90,5 +93,6 @@ public class DefaultNetworkRecommendationService extends Service {
     @Override
     protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
         mProvider.dump(fd, writer, args);
+        mWifiNotificationController.dump(fd, writer, args);
     }
 }

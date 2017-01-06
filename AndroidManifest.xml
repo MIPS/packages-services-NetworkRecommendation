@@ -19,7 +19,15 @@
           android:versionName="1.0.0"
           package="com.android.networkrecommendation">
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.BROADCAST_NETWORK_PRIVILEGED"/>
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS"/>
+    <!--TODO: Delete this and use WifiManager instead of WifiScanner -->
+    <uses-permission android:name="android.permission.LOCATION_HARDWARE"/>
     <uses-permission android:name="android.permission.SCORE_NETWORKS"/>
+    <uses-permission android:name="android.permission.SUBSTITUTE_NOTIFICATION_APP_NAME"/>
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
 
     <application android:allowBackup="false"
                  android:directBootAware="true">

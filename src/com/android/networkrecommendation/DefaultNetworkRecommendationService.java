@@ -72,6 +72,7 @@ public class DefaultNetworkRecommendationService extends Service {
     private Handler mHandler;
     private DefaultNetworkRecommendationProvider mProvider;
     private WifiNotificationController mWifiNotificationController;
+    private WifiWakeupController mWifiWakeupController;
 
     @Override
     public void onCreate() {
@@ -83,16 +84,26 @@ public class DefaultNetworkRecommendationService extends Service {
                 new DefaultNetworkRecommendationProvider.ScoreStorage());
         mWifiNotificationController = new WifiNotificationController(
                 this, mHandler.getLooper(), null);
+        mWifiWakeupController = new WifiWakeupController(
+                this, getContentResolver(), mHandlerThread.getLooper());
     }
 
     @Override
     public IBinder onBind(Intent intent) {
+        mWifiWakeupController.start();
         return mProvider.getBinder();
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        mWifiWakeupController.stop();
+        return super.onUnbind(intent);
     }
 
     @Override
     protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
         mProvider.dump(fd, writer, args);
         mWifiNotificationController.dump(fd, writer, args);
+        mWifiWakeupController.dump(fd, writer, args);
     }
 }

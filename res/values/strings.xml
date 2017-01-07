@@ -26,4 +26,8 @@
     <string name="wifi_available_failed">FAILED TO CONNECT</string>
 
     <string name="android_system_label">Android System</string>
+
+    <!-- A notification is shown when Wi-Fi Wakeup enables Wi-Fi. -->
+    <string name="wifi_wakeup_enabled_notification_title">Wi\u2011Fi was turned on automatically</string>
+    <string name="wifi_wakeup_enabled_notification_context">"Wi\u2011Fi turned on because you are near saved network, %1$s."</string>
 </resources>

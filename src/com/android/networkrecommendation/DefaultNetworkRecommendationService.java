@@ -18,12 +18,15 @@ package com.android.networkrecommendation;
 
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.net.NetworkScoreManager;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Looper;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -43,17 +46,26 @@ public class DefaultNetworkRecommendationService extends Service {
     public void onCreate() {
         mHandlerThread = new HandlerThread("RecommendationProvider");
         mHandlerThread.start();
-        mHandler = new Handler(mHandlerThread.getLooper());
+        Looper looper = mHandlerThread.getLooper();
+        mHandler = new Handler(looper);
         NetworkScoreManager networkScoreManager = getSystemService(NetworkScoreManager.class);
         mProvider = new DefaultNetworkRecommendationProvider(mHandler,
                 networkScoreManager, new DefaultNetworkRecommendationProvider.ScoreStorage());
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        WifiManager wifiManager = getSystemService(WifiManager.class);
+        Resources resources = getResources();
+        ContentResolver contentResolver = getContentResolver();
         mWifiNotificationController = new WifiNotificationController(
-                this, getContentResolver(), mHandler, mProvider,
-                getSystemService(WifiManager.class), getSystemService(NotificationManager.class),
+                this, contentResolver, new Handler(looper), mProvider,
+                wifiManager, notificationManager,
                 new WifiNotificationHelper(this, mProvider));
-        mWifiWakeupController = new WifiWakeupController(this, getContentResolver(),
-                mHandlerThread.getLooper(), getSystemService(WifiManager.class),
-                new WifiWakeupNetworkSelector(getResources()));
+        WifiWakeupNetworkSelector wifiWakeupNetworkSelector =
+                new WifiWakeupNetworkSelector(resources);
+        WifiWakeupNotificationHelper wifiWakeupNotificationHelper =
+                new WifiWakeupNotificationHelper(this, resources, new Handler(looper),
+                        notificationManager, wifiManager);
+        mWifiWakeupController = new WifiWakeupController(this, contentResolver, looper,
+                wifiManager, wifiWakeupNetworkSelector, wifiWakeupNotificationHelper);
     }
 
     @Override

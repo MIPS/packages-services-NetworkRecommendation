@@ -53,10 +53,9 @@ public class TestUtil {
     }
 
     /** Send {@link WifiManager#WIFI_AP_STATE_CHANGED_ACTION} broadcast. */
-    public static void sendWifiApStateChanged(BroadcastReceiver broadcastReceiver, Context context,
-            int wifiApState) {
+    public static void sendWifiApStateChanged(BroadcastReceiver broadcastReceiver,
+            Context context) {
         Intent intent = new Intent(WifiManager.WIFI_AP_STATE_CHANGED_ACTION);
-        intent.putExtra(WifiManager.EXTRA_WIFI_AP_STATE, wifiApState);
         broadcastReceiver.onReceive(context, intent);
     }
 
@@ -75,10 +74,8 @@ public class TestUtil {
     }
 
     /** Send {@link WifiManager#WIFI_STATE_CHANGED_ACTION} broadcast. */
-    public static void sendWifiStateChanged(BroadcastReceiver broadcastReceiver,
-            Context context, int wifiState) {
+    public static void sendWifiStateChanged(BroadcastReceiver broadcastReceiver, Context context) {
         Intent intent = new Intent(WifiManager.WIFI_STATE_CHANGED_ACTION);
-        intent.putExtra(WifiManager.EXTRA_WIFI_STATE, wifiState);
         broadcastReceiver.onReceive(context, intent);
     }
 }

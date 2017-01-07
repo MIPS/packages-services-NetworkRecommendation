@@ -42,6 +42,42 @@ import java.util.List;
 
 /**
  * In memory, debuggable network recommendation provider.
+ *
+ * <p>This example evaluates networks in a scan and picks the "least bad" network, returning a
+ * result to the RecommendedNetworkEvaluator, regardless of configuration point.
+ *
+ * <p>This recommender is not yet recommended for non-development devices.
+ *
+ * <p>To debug:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService
+ *
+ * <p>Clear stored scores:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService clear
+ *
+ * <p>Score a network:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore $SCORE
+ *
+ * <p>SCORE: "Quoted SSID",bssid|$RSSI_CURVE|metered|captivePortal
+ *
+ * <p>RSSI_CURVE: start,bucketWidth,score,score,score,score,...
+ *
+ * <p>curve, metered and captive portal are optional, as expressed by an empty value.
+ *
+ * <p>All commands should be executed on one line, no spaces between each line of the command..
+ * <p>Eg, A high quality, paid network with captive portal:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
+ * '\"Metered\",aa:bb:cc:dd:ee:ff\|
+ * -150,10,-128,-128,-128,-128,-128,-128,-128,-128,27,27,27,27,27,-128\|1\|1'
+ *
+ * <p>Eg, A high quality, unmetered network with captive portal:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
+ * '\"Captive\",aa:bb:cc:dd:ee:ff\|
+ * -150,10,-128,-128,-128,-128,-128,-128,-128,-128,28,28,28,28,28,-128\|0\|1'
+ *
+ * <p>Eg, A high quality, unmetered network with any bssid:
+ * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
+ * '\"AnySsid\",00:00:00:00:00:00\|
+ * -150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,29,-128\|0\|0'
  */
 @VisibleForTesting
 public class DefaultNetworkRecommendationProvider
@@ -144,6 +180,7 @@ public class DefaultNetworkRecommendationProvider
     }
 
     /** Score networks based on a few properties ... */
+    @Override
     public void onRequestScores(NetworkKey[] networks) {
         synchronized (mStatsLock) {
             mScoreCounter++;
@@ -174,7 +211,7 @@ public class DefaultNetworkRecommendationProvider
             return;
         }
 
-        if (DEBUG) Log.d(TAG, "Scored networks: " + scoredNetworks.toString());
+        if (DEBUG) Log.d(TAG, "Scored networks: " + scoredNetworks);
         safelyUpdateScores(scoredNetworks.toArray(new ScoredNetwork[scoredNetworks.size()]));
     }
 
@@ -251,8 +288,8 @@ public class DefaultNetworkRecommendationProvider
         }
 
         String[] splitRssiCurve = splitScore[1].split(",");
-        int start = Integer.valueOf(splitRssiCurve[0]);
-        int bucketWidth = Integer.valueOf(splitRssiCurve[1]);
+        int start = Integer.parseInt(splitRssiCurve[0]);
+        int bucketWidth = Integer.parseInt(splitRssiCurve[1]);
         byte[] rssiBuckets = new byte[splitRssiCurve.length - 2];
         for (int i = 2; i < splitRssiCurve.length; i++) {
             rssiBuckets[i - 2] = Integer.valueOf(splitRssiCurve[i]).byteValue();
@@ -281,7 +318,7 @@ public class DefaultNetworkRecommendationProvider
      */
     private static String quoteSsid(ScanResult scanResult) {
         if (scanResult.wifiSsid != null) {
-            return "\"" + scanResult.wifiSsid.toString() + "\"";
+            return "\"" + scanResult.wifiSsid + "\"";
         } else if (scanResult.SSID != null) {
             return "\"" + scanResult.SSID + "\"";
         } else {
@@ -294,7 +331,7 @@ public class DefaultNetworkRecommendationProvider
     static class ScoreStorage {
 
         @GuardedBy("mScores")
-        private final ArrayMap<NetworkKey, ScoredNetwork> mScores = new ArrayMap();
+        private final ArrayMap<NetworkKey, ScoredNetwork> mScores = new ArrayMap<>();
 
         /**
          * Store a score in storage.

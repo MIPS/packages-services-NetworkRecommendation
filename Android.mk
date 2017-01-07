@@ -5,6 +5,7 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
     android-support-annotations \
 
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
+LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
 
 LOCAL_PACKAGE_NAME := NetworkRecommendation
 LOCAL_CERTIFICATE := platform

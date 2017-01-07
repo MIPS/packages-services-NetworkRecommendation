@@ -16,6 +16,7 @@
 
 package com.android.networkrecommendation;
 
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.net.NetworkScoreManager;
@@ -43,11 +44,13 @@ public class DefaultNetworkRecommendationService extends Service {
         mHandlerThread = new HandlerThread("RecommendationProvider");
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
+        NetworkScoreManager networkScoreManager = getSystemService(NetworkScoreManager.class);
         mProvider = new DefaultNetworkRecommendationProvider(mHandler,
-                getSystemService(NetworkScoreManager.class),
-                new DefaultNetworkRecommendationProvider.ScoreStorage());
+                networkScoreManager, new DefaultNetworkRecommendationProvider.ScoreStorage());
         mWifiNotificationController = new WifiNotificationController(
-                this, mHandler.getLooper(), null);
+                this, getContentResolver(), mHandler, networkScoreManager,
+                getSystemService(WifiManager.class), getSystemService(NotificationManager.class),
+                new WifiNotificationHelper(this, mProvider));
         mWifiWakeupController = new WifiWakeupController(this, getContentResolver(),
                 mHandlerThread.getLooper(), getSystemService(WifiManager.class),
                 new WifiWakeupNetworkSelector(getResources()));
@@ -56,12 +59,14 @@ public class DefaultNetworkRecommendationService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         mWifiWakeupController.start();
+        mWifiNotificationController.start();
         return mProvider.getBinder();
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
         mWifiWakeupController.stop();
+        mWifiNotificationController.stop();
         return super.onUnbind(intent);
     }
 

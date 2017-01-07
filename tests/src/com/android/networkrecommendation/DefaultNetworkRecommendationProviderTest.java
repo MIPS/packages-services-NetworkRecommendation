@@ -16,7 +16,6 @@
 
 package com.android.networkrecommendation;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -61,21 +60,23 @@ public class DefaultNetworkRecommendationProviderTest {
 
     private static final String GOOD_METERED_NETWORK_STRING_UNQUOTED = "Metered";
     private static final String GOOD_METERED_NETWORK_STRING = "\"Metered\",aa:bb:cc:dd:ee:ff" +
-            "|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,20,20,20,20,-128|1|0";
-
+            "|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,20,20,20,20,-128|1|0|4K";
     private static final RssiCurve GOOD_METERED_NETWORK_CURVE = new RssiCurve(
             -150 /* start */, 10 /* bucketWidth */,
-            new byte[]{-128, -128, -128, -128, -128, -128, -128, -128, 20, 20, 20, 20, -128});
+            new byte[]{-128, -128, -128, -128, -128, -128, -128, -128, 20, 20, 20, 20, -128},
+            0 /* defaultActiveNetworkBoost */);
     private static final ScoredNetwork GOOD_METERED_NETWORK = new ScoredNetwork(
             new NetworkKey(new WifiKey("\"Metered\"", "aa:bb:cc:dd:ee:ff")),
             GOOD_METERED_NETWORK_CURVE, true /* meteredHint */, new Bundle());
 
     private static final String GOOD_CAPTIVE_NETWORK_STRING_UNQUOTED = "Captive";
     private static final String GOOD_CAPTIVE_NETWORK_STRING =
-            "\"Captive\",ff:ee:dd:cc:bb:aa|-160,18,-128,-128,-128,-128,-128,-128,21,21,21,-128|0|1";
+            "\"Captive\",ff:ee:dd:cc:bb:aa"
+                    + "|-160,18,-128,-128,-128,-128,-128,-128,21,21,21,-128|0|1|HD";
     private static final RssiCurve GOOD_CAPTIVE_NETWORK_CURVE = new RssiCurve(
             -160 /* start */, 18 /* bucketWidth */,
-            new byte[]{-128, -128, -128, -128, -128, -128, 21, 21, 21, -128});
+            new byte[]{-128, -128, -128, -128, -128, -128, 21, 21, 21, -128},
+            0 /* defaultActiveNetworkBoost */);
     private static final ScoredNetwork GOOD_CAPTIVE_NETWORK;
     static {
         Bundle attributes = new Bundle();
@@ -87,24 +88,46 @@ public class DefaultNetworkRecommendationProviderTest {
 
     private static final String ANY_NETWORK_STRING_UNQUOTED = "AnySsid";
     private static final String ANY_NETWORK_STRING =
-            "\"AnySsid\",00:00:00:00:00:00|-160,18,-128,-128,-128,-128,-128,-128,22,22,22,-128|0|0";
+            "\"AnySsid\",00:00:00:00:00:00"
+                    + "|-160,18,-128,-128,-128,-128,-128,-128,22,22,22,-128|0|0|NONE";
     private static final RssiCurve ANY_NETWORK_CURVE = new RssiCurve(
             -160 /* start */, 18 /* bucketWidth */,
-            new byte[]{-128, -128, -128, -128, -128, -128, 22, 22, 22, -128});
+            new byte[]{-128, -128, -128, -128, -128, -128, 22, 22, 22, -128},
+            0 /* defaultActiveNetworkBoost */);
     private static final ScoredNetwork ANY_NETWORK = new ScoredNetwork(
-                new NetworkKey(new WifiKey("\"AnySsid\"", "ee:ee:ee:ee:ee:ee")),
-                ANY_NETWORK_CURVE, false /* meteredHint */, new Bundle());
+            new NetworkKey(new WifiKey("\"AnySsid\"", "ee:ee:ee:ee:ee:ee")),
+            ANY_NETWORK_CURVE, false /* meteredHint */, new Bundle());
 
     private static final String ANY_NETWORK_SPECIFIC_STRING_UNQUOTED = "AnySsid";
     private static final String ANY_NETWORK_SPECIFIC_STRING =
-            "\"AnySsid\",ee:ee:ee:ee:ee:ee|-160,18,-128,-128,-128,-128,-128,-128,23,23,23,-128|0|0";
+            "\"AnySsid\",ee:ee:ee:ee:ee:ee"
+                    + "|-160,18,-128,-128,-128,-128,-128,-128,23,23,23,-128|0|0|NONE";
     private static final RssiCurve ANY_NETWORK_SPECIFIC_CURVE = new RssiCurve(
             -160 /* start */, 18 /* bucketWidth */,
-            new byte[]{-128, -128, -128, -128, -128, -128, 23, 23, 23, -128});
+            new byte[]{-128, -128, -128, -128, -128, -128, 23, 23, 23, -128},
+            0 /* defaultActiveNetworkBoost */);
     private static final ScoredNetwork ANY_NETWORK_SPECIFIC = new ScoredNetwork(
-                new NetworkKey(new WifiKey("\"AnySsid\"", "ee:ee:ee:ee:ee:ee")),
-                ANY_NETWORK_SPECIFIC_CURVE, false /* meteredHint */, new Bundle());
+            new NetworkKey(new WifiKey("\"AnySsid\"", "ee:ee:ee:ee:ee:ee")),
+            ANY_NETWORK_SPECIFIC_CURVE, false /* meteredHint */, new Bundle());
 
+    private static final String BAD_NETWORK_STRING_UNQUOTED = "Bad";
+    private static final String BAD_NETWORK_STRING =
+            "\"Bad\",aa:bb:cc:dd:ee:ff"
+                    + "|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128"
+                    + "|1|0|SD";
+    private static final RssiCurve BAD_NETWORK_CURVE =
+            new RssiCurve(
+                    -150 /* start */,
+                    10 /* bucketWidth */,
+                    new byte[] {-128, -128, -128, -128, -128, -128,
+                            -128, -128, -128, -128, -128, -128, -128},
+                    0 /* defaultActiveNetworkBoost */);
+    private static final ScoredNetwork BAD_NETWORK =
+            new ScoredNetwork(
+                    new NetworkKey(new WifiKey("\"Bad\"", "aa:bb:cc:dd:ee:ff")),
+                    BAD_NETWORK_CURVE,
+                    true /* meteredHint */,
+                    new Bundle());
 
     @Mock
     private NetworkRecommendationProvider.ResultCallback mCallback;
@@ -211,8 +234,8 @@ public class DefaultNetworkRecommendationProviderTest {
     }
 
     @Test
-    public void dumpAddScores() {
-        String[] args = {"addScore", GOOD_METERED_NETWORK_STRING};
+    public void dumpAddScores_goodMetered() {
+        String[] args = {"netrec", "addScore", GOOD_METERED_NETWORK_STRING};
         mProvider.dump(null /* fd */, new PrintWriter(new StringWriter()), args);
 
         ScoredNetwork[] scoredNetworks = verifyAndCaptureScoredNetworks();
@@ -224,12 +247,41 @@ public class DefaultNetworkRecommendationProviderTest {
 
         assertEquals(GOOD_METERED_NETWORK.meteredHint, score.meteredHint);
         assertEquals(
-                GOOD_METERED_NETWORK.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
+                GOOD_METERED_NETWORK.attributes.getBoolean(
+                        ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
                 score.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL));
 
-        assertEquals(GOOD_METERED_NETWORK_CURVE.start, score.rssiCurve.start);
-        assertEquals(GOOD_METERED_NETWORK_CURVE.bucketWidth, score.rssiCurve.bucketWidth);
-        assertArrayEquals(GOOD_METERED_NETWORK_CURVE.rssiBuckets, score.rssiCurve.rssiBuckets);
+        assertEquals("Network curve does not match", GOOD_METERED_NETWORK_CURVE, score.rssiCurve);
+        assertEquals(
+                "Badge curve does not match",
+                DefaultNetworkRecommendationProvider.BADGE_CURVE_4K,
+                (RssiCurve) score.attributes.getParcelable(
+                        ScoredNetwork.ATTRIBUTES_KEY_BADGING_CURVE));
+    }
+
+    @Test
+    public void dumpAddScores_bad() {
+        String[] args = {"netrec", "addScore", BAD_NETWORK_STRING};
+        mProvider.dump(null /* fd */, new PrintWriter(new StringWriter()), args);
+
+        ScoredNetwork[] scoredNetworks = verifyAndCaptureScoredNetworks();
+        assertEquals(1, scoredNetworks.length);
+        ScoredNetwork score = scoredNetworks[0];
+
+        assertEquals(BAD_NETWORK.networkKey.wifiKey.ssid, score.networkKey.wifiKey.ssid);
+        assertEquals(BAD_NETWORK.networkKey.wifiKey.bssid, score.networkKey.wifiKey.bssid);
+
+        assertEquals(BAD_NETWORK.meteredHint, score.meteredHint);
+        assertEquals(
+                BAD_NETWORK.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
+                score.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL));
+
+        assertEquals("Network curve does not match", BAD_NETWORK_CURVE, score.rssiCurve);
+        assertEquals(
+                "Badge curve does not match",
+                DefaultNetworkRecommendationProvider.BADGE_CURVE_SD,
+                (RssiCurve) score.attributes.getParcelable(
+                        ScoredNetwork.ATTRIBUTES_KEY_BADGING_CURVE));
     }
 
     @Test
@@ -247,12 +299,15 @@ public class DefaultNetworkRecommendationProviderTest {
         assertEquals(GOOD_CAPTIVE_NETWORK.meteredHint, score.meteredHint);
 
         assertEquals(
-                GOOD_CAPTIVE_NETWORK.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
+                GOOD_CAPTIVE_NETWORK.attributes.getBoolean(
+                        ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
                 score.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL));
-        assertEquals(GOOD_CAPTIVE_NETWORK_CURVE.start, score.rssiCurve.start);
-        assertEquals(GOOD_CAPTIVE_NETWORK_CURVE.bucketWidth, score.rssiCurve.bucketWidth);
-        assertArrayEquals(GOOD_CAPTIVE_NETWORK_CURVE.rssiBuckets,
-                score.rssiCurve.rssiBuckets);
+        assertEquals("Network curve does not match.", GOOD_CAPTIVE_NETWORK_CURVE, score.rssiCurve);
+        assertEquals(
+                "Badge curve does not match",
+                DefaultNetworkRecommendationProvider.BADGE_CURVE_HD,
+                (RssiCurve) score.attributes.getParcelable(
+                        ScoredNetwork.ATTRIBUTES_KEY_BADGING_CURVE));
     }
 
     @Test
@@ -273,9 +328,11 @@ public class DefaultNetworkRecommendationProviderTest {
                 ANY_NETWORK.attributes.getBoolean(
                     ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
                 score.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL));
-        assertEquals(ANY_NETWORK_CURVE.start, score.rssiCurve.start);
-        assertEquals(ANY_NETWORK_CURVE.bucketWidth, score.rssiCurve.bucketWidth);
-        assertArrayEquals(ANY_NETWORK_CURVE.rssiBuckets, score.rssiCurve.rssiBuckets);
+        assertEquals("Network curve does not match", ANY_NETWORK_CURVE, score.rssiCurve);
+        assertNull(
+                "Badge curve should not be set.",
+                (RssiCurve) score.attributes.getParcelable(
+                        ScoredNetwork.ATTRIBUTES_KEY_BADGING_CURVE));
     }
 
     @Test
@@ -298,9 +355,12 @@ public class DefaultNetworkRecommendationProviderTest {
                 ANY_NETWORK_SPECIFIC.attributes.getBoolean(
                     ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL),
                 score.attributes.getBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL));
-        assertEquals(ANY_NETWORK_SPECIFIC_CURVE.start, score.rssiCurve.start);
-        assertEquals(ANY_NETWORK_SPECIFIC_CURVE.bucketWidth, score.rssiCurve.bucketWidth);
-        assertArrayEquals(ANY_NETWORK_SPECIFIC_CURVE.rssiBuckets, score.rssiCurve.rssiBuckets);
+        assertEquals("Network curve does not match", ANY_NETWORK_SPECIFIC_CURVE, score.rssiCurve);
+        assertNull(
+                "Badge curve should not be set.",
+                (RssiCurve) score.attributes.getParcelable(
+                        ScoredNetwork.ATTRIBUTES_KEY_BADGING_CURVE));
+
     }
 
     private RecommendationResult verifyAndCaptureResult(

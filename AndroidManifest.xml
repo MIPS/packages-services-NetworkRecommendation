@@ -21,7 +21,6 @@
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-    <uses-permission android:name="android.permission.BROADCAST_NETWORK_PRIVILEGED"/>
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS"/>
     <!--TODO: Delete this and use WifiManager instead of WifiScanner -->
     <uses-permission android:name="android.permission.LOCATION_HARDWARE"/>

@@ -151,7 +151,7 @@ public class DefaultNetworkRecommendationProviderTest {
 
         ScanResult[] scanResults = new ScanResult[6];
         for (int i = 0; i < 3; i++) {
-            scanResults[i] = Util.createMockScanResult(i);
+            scanResults[i] = TestUtil.createMockScanResult(i);
         }
 
         // For now we add directly to storage, but when we start calling
@@ -170,7 +170,7 @@ public class DefaultNetworkRecommendationProviderTest {
         }
 
         for (int i = 4; i < 6; i++) {
-            scanResults[i] = Util.createMockScanResult(i);
+            scanResults[i] = TestUtil.createMockScanResult(i);
         }
 
         RecommendationRequest request = new RecommendationRequest.Builder()

@@ -17,9 +17,9 @@
 package com.android.networkrecommendation;
 
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.net.NetworkScoreManager;
+import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -44,12 +44,13 @@ public class DefaultNetworkRecommendationService extends Service {
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
         mProvider = new DefaultNetworkRecommendationProvider(mHandler,
-                (NetworkScoreManager) getSystemService(Context.NETWORK_SCORE_SERVICE),
+                getSystemService(NetworkScoreManager.class),
                 new DefaultNetworkRecommendationProvider.ScoreStorage());
         mWifiNotificationController = new WifiNotificationController(
                 this, mHandler.getLooper(), null);
-        mWifiWakeupController = new WifiWakeupController(
-                this, getContentResolver(), mHandlerThread.getLooper());
+        mWifiWakeupController = new WifiWakeupController(this, getContentResolver(),
+                mHandlerThread.getLooper(), getSystemService(WifiManager.class),
+                new WifiWakeupNetworkSelector(getResources()));
     }
 
     @Override

@@ -20,16 +20,29 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.NetworkInfo;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiSsid;
+import android.os.SystemClock;
 
 /**
  * Utils for wifi tests.
  */
 public class TestUtil {
 
-    /**
-     * Send {@link WifiManager#NETWORK_STATE_CHANGED_ACTION} broadcast.
-     */
+    /** Create a scan result with some basic properties. */
+    public static ScanResult createMockScanResult(int i) {
+        ScanResult scanResult = new ScanResult();
+        scanResult.level = i;
+        scanResult.SSID = "ssid-" + i;
+        scanResult.wifiSsid = WifiSsid.createFromAsciiEncoded("ssid-" + i);
+        scanResult.BSSID = "aa:bb:cc:dd:ee:0" + i;
+        scanResult.capabilities = "[ESS]";
+        scanResult.timestamp = SystemClock.elapsedRealtime() * 1000;
+        return scanResult;
+    }
+
+    /** Send {@link WifiManager#NETWORK_STATE_CHANGED_ACTION} broadcast. */
     public static void sendNetworkStateChanged(BroadcastReceiver broadcastReceiver,
             Context context, NetworkInfo.DetailedState detailedState) {
         Intent intent = new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION);
@@ -39,28 +52,29 @@ public class TestUtil {
         broadcastReceiver.onReceive(context, intent);
     }
 
-    /**
-     * Send {@link WifiManager#SCAN_RESULTS_AVAILABLE_ACTION} broadcast.
-     */
+    /** Send {@link WifiManager#WIFI_AP_STATE_CHANGED_ACTION} broadcast. */
+    public static void sendWifiApStateChanged(BroadcastReceiver broadcastReceiver, Context context,
+            int wifiApState) {
+        Intent intent = new Intent(WifiManager.WIFI_AP_STATE_CHANGED_ACTION);
+        intent.putExtra(WifiManager.EXTRA_WIFI_AP_STATE, wifiApState);
+        broadcastReceiver.onReceive(context, intent);
+    }
+
+    /** Send {@link WifiManager#SCAN_RESULTS_AVAILABLE_ACTION} broadcast. */
     public static void sendScanResultsAvailable(BroadcastReceiver broadcastReceiver,
             Context context) {
         Intent intent = new Intent(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
         broadcastReceiver.onReceive(context, intent);
     }
 
-    /**
-     * Send {@link WifiManager#WIFI_SCAN_AVAILABLE} broadcast.
-     */
-    public static void sendWifiScanAvailable(BroadcastReceiver broadcastReceiver,
-            Context context, int scanAvailable) {
-        Intent intent = new Intent(WifiManager.WIFI_SCAN_AVAILABLE);
-        intent.putExtra(WifiManager.EXTRA_SCAN_AVAILABLE, scanAvailable);
+    /** Send {@link WifiManager#CONFIGURED_NETWORKS_CHANGED_ACTION} broadcast. */
+    public static void sendConfiguredNetworksChanged(BroadcastReceiver broadcastReceiver,
+            Context context) {
+        Intent intent = new Intent(WifiManager.CONFIGURED_NETWORKS_CHANGED_ACTION);
         broadcastReceiver.onReceive(context, intent);
     }
 
-    /**
-     * Send {@link WifiManager#WIFI_STATE_CHANGED_ACTION} broadcast.
-     */
+    /** Send {@link WifiManager#WIFI_STATE_CHANGED_ACTION} broadcast. */
     public static void sendWifiStateChanged(BroadcastReceiver broadcastReceiver,
             Context context, int wifiState) {
         Intent intent = new Intent(WifiManager.WIFI_STATE_CHANGED_ACTION);

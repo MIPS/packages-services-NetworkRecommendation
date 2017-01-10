@@ -17,8 +17,6 @@
 package com.android.networkrecommendation;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import android.content.Intent;
@@ -31,7 +29,6 @@ import android.net.RecommendationRequest;
 import android.net.RecommendationResult;
 import android.net.WifiKey;
 import android.net.wifi.ScanResult;
-import android.net.wifi.WifiConfiguration;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.IRemoteCallback;
@@ -104,7 +101,7 @@ public class DefaultNetworkRecommendationServiceTest {
 
         ScanResult[] scanResults = new ScanResult[5];
         for (int i = 0; i < 5; i++) {
-            scanResults[i] = Util.createMockScanResult(i);
+            scanResults[i] = TestUtil.createMockScanResult(i);
         }
 
         RecommendationRequest request = new RecommendationRequest.Builder()

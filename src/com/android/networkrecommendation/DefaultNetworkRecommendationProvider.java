@@ -93,7 +93,7 @@ public class DefaultNetworkRecommendationProvider
     @VisibleForTesting
     static final RssiCurve BADGE_CURVE_SD =
             new RssiCurve(
-                    0 /* start */,
+                    -150 /* start */,
                     10 /* bucketWidth */,
                     new byte[] {0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10},
                     0 /* defaultActiveNetworkBoost */);
@@ -101,7 +101,7 @@ public class DefaultNetworkRecommendationProvider
     @VisibleForTesting
     static final RssiCurve BADGE_CURVE_HD =
             new RssiCurve(
-                    0 /* start */,
+                    -150 /* start */,
                     10 /* bucketWidth */,
                     new byte[] {0, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20},
                     0 /* defaultActiveNetworkBoost */);
@@ -109,7 +109,7 @@ public class DefaultNetworkRecommendationProvider
     @VisibleForTesting
     static final RssiCurve BADGE_CURVE_4K =
             new RssiCurve(
-                    0 /* start */,
+                    -150 /* start */,
                     10 /* bucketWidth */,
                     new byte[] {0, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30},
                     0 /* defaultActiveNetworkBoost */);

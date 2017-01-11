@@ -57,11 +57,13 @@ import java.util.List;
  * <p>Score a network:
  * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore $SCORE
  *
- * <p>SCORE: "Quoted SSID",bssid|$RSSI_CURVE|metered|captivePortal
+ * <p>SCORE: "Quoted SSID",bssid|$RSSI_CURVE|metered|captivePortal|BADGE
  *
  * <p>RSSI_CURVE: start,bucketWidth,score,score,score,score,...
  *
  * <p>curve, metered and captive portal are optional, as expressed by an empty value.
+ *
+ * <p>BADGE: NONE, SD, HD, 4K
  *
  * <p>All commands should be executed on one line, no spaces between each line of the command..
  * <p>Eg, A high quality, paid network with captive portal:
@@ -87,6 +89,30 @@ public class DefaultNetworkRecommendationProvider
     static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
     private static final String WILDCARD_MAC = "00:00:00:00:00:00";
+
+    @VisibleForTesting
+    static final RssiCurve BADGE_CURVE_SD =
+            new RssiCurve(
+                    0 /* start */,
+                    10 /* bucketWidth */,
+                    new byte[] {0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10},
+                    0 /* defaultActiveNetworkBoost */);
+
+    @VisibleForTesting
+    static final RssiCurve BADGE_CURVE_HD =
+            new RssiCurve(
+                    0 /* start */,
+                    10 /* bucketWidth */,
+                    new byte[] {0, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20},
+                    0 /* defaultActiveNetworkBoost */);
+
+    @VisibleForTesting
+    static final RssiCurve BADGE_CURVE_4K =
+            new RssiCurve(
+                    0 /* start */,
+                    10 /* bucketWidth */,
+                    new byte[] {0, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30},
+                    0 /* defaultActiveNetworkBoost */);
 
     private final NetworkScoreManager mScoreManager;
     private final ScoreStorage mStorage;
@@ -277,15 +303,7 @@ public class DefaultNetworkRecommendationProvider
     private static ScoredNetwork parseScore(String score) {
         String[] splitScore = score.split("\\|");
         String[] splitWifiKey = splitScore[0].split(",");
-        NetworkKey networkKey = new NetworkKey(
-                new WifiKey(splitWifiKey[0], splitWifiKey[1]));
-
-        boolean meteredHint = "1".equals(splitScore[2]);
-        Bundle attributes = new Bundle();
-        if (!TextUtils.isEmpty(splitScore[3])) {
-            attributes.putBoolean(ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL,
-                    "1".equals(splitScore[3]));
-        }
+        NetworkKey networkKey = new NetworkKey(new WifiKey(splitWifiKey[0], splitWifiKey[1]));
 
         String[] splitRssiCurve = splitScore[1].split(",");
         int start = Integer.parseInt(splitRssiCurve[0]);
@@ -293,6 +311,26 @@ public class DefaultNetworkRecommendationProvider
         byte[] rssiBuckets = new byte[splitRssiCurve.length - 2];
         for (int i = 2; i < splitRssiCurve.length; i++) {
             rssiBuckets[i - 2] = Integer.valueOf(splitRssiCurve[i]).byteValue();
+        }
+
+        boolean meteredHint = "1".equals(splitScore[2]);
+        Bundle attributes = new Bundle();
+        if (!TextUtils.isEmpty(splitScore[3])) {
+            attributes.putBoolean(
+                    ScoredNetwork.ATTRIBUTES_KEY_HAS_CAPTIVE_PORTAL, "1".equals(splitScore[3]));
+        }
+        if (splitScore.length > 4) {
+            String badge = splitScore[4].toUpperCase();
+            if ("SD".equals(badge)) {
+                attributes.putParcelable(
+                        ScoredNetwork.ATTRIBUTES_KEY_BADGING_CURVE, BADGE_CURVE_SD);
+            } else if ("HD".equals(badge)) {
+                attributes.putParcelable(
+                        ScoredNetwork.ATTRIBUTES_KEY_BADGING_CURVE, BADGE_CURVE_HD);
+            } else if ("4K".equals(badge)) {
+                attributes.putParcelable(
+                        ScoredNetwork.ATTRIBUTES_KEY_BADGING_CURVE, BADGE_CURVE_4K);
+            }
         }
         RssiCurve rssiCurve = new RssiCurve(start, bucketWidth, rssiBuckets, 0);
         return new ScoredNetwork(networkKey, rssiCurve, meteredHint, attributes);

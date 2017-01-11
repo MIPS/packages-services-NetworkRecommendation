@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
 
 package com.android.networkrecommendation;
 
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,18 +30,25 @@ import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.net.NetworkInfo;
+import android.net.NetworkScoreManager;
+import android.net.RecommendationRequest;
+import android.net.RecommendationResult;
 import android.net.wifi.ScanResult;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
-import android.net.wifi.WifiScanner;
+import android.net.wifi.WifiManager.ActionListener;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.support.test.InstrumentationRegistry;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -57,9 +66,13 @@ public class WifiNotificationControllerTest {
     public static final String TAG = "WifiScanningServiceTest";
 
     @Mock private Context mContext;
+    @Mock private NetworkScoreManager mScoreManager;
+    @Mock private WifiManager mWifiManager;
     @Mock private NotificationManager mNotificationManager;
-    @Mock private WifiScanner mWifiScanner;
+    @Mock private WifiNotificationHelper mWifiNotificationHelper;
+    @Mock private CachedScoredNetworkProvider mCachedScoredNetworkProvider;
     private ContentResolver mContentResolver;
+    private Handler mHandler;
     WifiNotificationController mWifiNotificationController;
 
     /**
@@ -75,40 +88,64 @@ public class WifiNotificationControllerTest {
 
         // Needed for the NotificationEnabledSettingObserver.
         mContentResolver = InstrumentationRegistry.getTargetContext().getContentResolver();
-        when(mContext.getContentResolver()).thenReturn(mContentResolver);
         Settings.Global.putInt(mContentResolver,
                 Settings.Global.WIFI_NETWORKS_AVAILABLE_NOTIFICATION_ON, 1);
-
-        when(mContext.getSystemService(Context.NOTIFICATION_SERVICE))
-                .thenReturn(mNotificationManager);
-        when(mContext.getSystemService(Context.WIFI_SCANNING_SERVICE))
-                .thenReturn(mWifiScanner);
+        mHandler = new Handler(Looper.getMainLooper());
 
         mWifiNotificationController = new WifiNotificationController(
-                mContext, Looper.getMainLooper(), mock(Notification.Builder.class));
+                mContext, mContentResolver, mHandler, mScoreManager,
+                mWifiManager, mNotificationManager, mWifiNotificationHelper);
+        mWifiNotificationController.start();
+
         ArgumentCaptor<BroadcastReceiver> broadcastReceiverCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
-
         verify(mContext)
-                .registerReceiver(broadcastReceiverCaptor.capture(), any(IntentFilter.class));
+                .registerReceiver(broadcastReceiverCaptor.capture(), any(IntentFilter.class),
+                        anyString(), any(Handler.class));
         mBroadcastReceiver = broadcastReceiverCaptor.getValue();
     }
 
-    private void setOpenAccessPoint() {
+    @After
+    public void tearDown() throws Exception {
+
+    }
+
+    private void setOpenAccessPoints(int numAccessPoints) {
         List<ScanResult> scanResults = new ArrayList<>();
+        for (int i = 0; i < numAccessPoints; i++) {
+            ScanResult scanResult = createScanResult("testSSID" + i, "00:00:00:00:00:00");
+            scanResults.add(scanResult);
+        }
+        when(mWifiManager.getScanResults()).thenReturn(scanResults);
+    }
+
+    private ScanResult createScanResult(String ssid, String bssid) {
         ScanResult scanResult = new ScanResult();
         scanResult.capabilities = "[ESS]";
-        scanResults.add(scanResult);
-        when(mWifiScanner.getSingleScanResults()).thenReturn(scanResults);
+        scanResult.SSID = ssid;
+        scanResult.BSSID = bssid;
+        return scanResult;
+    }
+
+    private WifiConfiguration createFakeConfig() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = "\"TestSsid\"";
+        config.BSSID = "00:00:00:00:00:00";
+        config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+        return config;
     }
 
     /** Verifies that a notification is displayed (and retracted) given system events. */
     @Test
-    public void verifyNotificationDisplayed() throws Exception {
+    public void verifyNotificationDisplayedWhenNetworkRecommended() throws Exception {
         TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext, WifiManager.WIFI_STATE_ENABLED);
         TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
                 NetworkInfo.DetailedState.DISCONNECTED);
-        setOpenAccessPoint();
+        setOpenAccessPoints(3);
+
+        when(mScoreManager.requestRecommendation(any(RecommendationRequest.class)))
+                .thenReturn(
+                        RecommendationResult.createConnectRecommendation(createFakeConfig()));
 
         // The notification should not be displayed after only two scan results.
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
@@ -122,22 +159,100 @@ public class WifiNotificationControllerTest {
                 NetworkInfo.DetailedState.SCANNING);
         TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
                 NetworkInfo.DetailedState.DISCONNECTED);
-
-        // Needed while WifiNotificationController creates its notification.
-        when(mContext.getResources()).thenReturn(mock(Resources.class));
+        verify(mNotificationManager, never())
+                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
+                        any(UserHandle.class));
 
         // The third scan result notification will trigger the notification.
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
+        verify(mWifiNotificationHelper).createMainNotification(any(WifiConfiguration.class),
+                any(Bitmap.class));
         verify(mNotificationManager)
                 .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
                         any(UserHandle.class));
         verify(mNotificationManager, never())
                 .cancelAsUser(any(String.class), anyInt(), any(UserHandle.class));
+    }
 
-        // Changing network state should cause the notification to go away.
+    /** Verifies that a notification is not displayed for bad networks. */
+    @Test
+    public void verifyNotificationNotDisplayedWhenNoNetworkRecommended() throws Exception {
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext, WifiManager.WIFI_STATE_ENABLED);
+        TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
+                NetworkInfo.DetailedState.DISCONNECTED);
+        setOpenAccessPoints(3);
+
+        // Recommendation result with no WifiConfiguration returned.
+        when(mScoreManager.requestRecommendation(any(RecommendationRequest.class)))
+                .thenReturn(RecommendationResult.createDoNotConnectRecommendation());
+
+        TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
+        TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
+        TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
+        TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
+        verify(mNotificationManager, never())
+                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
+                        any(UserHandle.class));
+
+        // DoNotConnect Recommendation result.
+        when(mScoreManager.requestRecommendation(any(RecommendationRequest.class)))
+                .thenReturn(RecommendationResult.createDoNotConnectRecommendation());
+        TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
+        verify(mNotificationManager, never())
+                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
+                        any(UserHandle.class));
+    }
+
+    /**
+     * Verifies the notifications flow (Connect -> connecting -> connected) when user clicks
+     * on Connect button.
+     */
+    @Test
+    public void verifyNotificationsFlowOnConnectToNetwork() {
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext, WifiManager.WIFI_STATE_ENABLED);
+        TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
+                NetworkInfo.DetailedState.DISCONNECTED);
+        setOpenAccessPoints(3);
+        when(mScoreManager.requestRecommendation(any(RecommendationRequest.class)))
+                .thenReturn(
+                        RecommendationResult.createConnectRecommendation(createFakeConfig()));
+
+        TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
+        TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
+        TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
+        verify(mWifiNotificationHelper).createMainNotification(any(WifiConfiguration.class),
+                any(Bitmap.class));
+        verify(mNotificationManager)
+                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
+                        any(UserHandle.class));
+
+        // Send connect intent, should attempt to connect to Wi-Fi
+        Intent intent = new Intent(
+                WifiNotificationController.ACTION_CONNECT_TO_RECOMMENDED_NETWORK);
+        mBroadcastReceiver.onReceive(mContext, intent);
+        verify(mWifiManager).connect(any(WifiConfiguration.class), any(ActionListener.class));
+        verify(mWifiNotificationHelper).createConnectingNotification(any(WifiConfiguration.class),
+                any(Bitmap.class));
+
+        // Show connecting notification.
+        verify(mNotificationManager, times(2))
+                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
+                        any(UserHandle.class));
+        // Verify callback to dismiss connecting notification exists.
+        assertTrue(mHandler.hasCallbacks(
+                mWifiNotificationController.mShowFailedToConnectNotificationRunnable));
+
+        // Verify show connected notification.
         TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
                 NetworkInfo.DetailedState.CONNECTED);
-        verify(mNotificationManager)
-                .cancelAsUser(any(String.class), anyInt(), any(UserHandle.class));
+        verify(mWifiNotificationHelper).createConnectedNotification(any(WifiConfiguration.class),
+                any(Bitmap.class));
+        verify(mNotificationManager, times(3))
+                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
+                        any(UserHandle.class));
+
+        // Verify callback to dismiss connected notification exists.
+        assertTrue(mHandler.hasCallbacks(
+                mWifiNotificationController.mDismissNotificationRunnable));
     }
 }

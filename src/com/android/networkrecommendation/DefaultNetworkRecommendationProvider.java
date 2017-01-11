@@ -83,7 +83,7 @@ import java.util.List;
  */
 @VisibleForTesting
 public class DefaultNetworkRecommendationProvider
-        extends NetworkRecommendationProvider {
+        extends NetworkRecommendationProvider implements CachedScoredNetworkProvider {
     static final String TAG = "DefaultNetRecProvider";
     static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
     static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
@@ -421,4 +421,10 @@ public class DefaultNetworkRecommendationProvider
             }
         }
     }
+
+    @Override
+    public ScoredNetwork getCachedScoredNetwork(NetworkKey networkKey) {
+        return mStorage.get(networkKey);
+    }
+
 }

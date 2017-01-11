@@ -60,9 +60,9 @@ public class DefaultNetworkRecommendationProviderTest {
 
     private static final String GOOD_METERED_NETWORK_STRING_UNQUOTED = "Metered";
     private static final String GOOD_METERED_NETWORK_STRING = "\"Metered\",aa:bb:cc:dd:ee:ff" +
-            "|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,20,20,20,20,-128|1|0|4K";
+            "|10,-128,-128,-128,-128,-128,-128,-128,-128,20,20,20,20,-128|1|0|4K";
     private static final RssiCurve GOOD_METERED_NETWORK_CURVE = new RssiCurve(
-            -150 /* start */, 10 /* bucketWidth */,
+            DefaultNetworkRecommendationProvider.CONSTANT_CURVE_START, 10 /* bucketWidth */,
             new byte[]{-128, -128, -128, -128, -128, -128, -128, -128, 20, 20, 20, 20, -128},
             0 /* defaultActiveNetworkBoost */);
     private static final ScoredNetwork GOOD_METERED_NETWORK = new ScoredNetwork(
@@ -72,9 +72,9 @@ public class DefaultNetworkRecommendationProviderTest {
     private static final String GOOD_CAPTIVE_NETWORK_STRING_UNQUOTED = "Captive";
     private static final String GOOD_CAPTIVE_NETWORK_STRING =
             "\"Captive\",ff:ee:dd:cc:bb:aa"
-                    + "|-160,18,-128,-128,-128,-128,-128,-128,21,21,21,-128|0|1|HD";
+                    + "|18,-128,-128,-128,-128,-128,-128,21,21,21,-128|0|1|HD";
     private static final RssiCurve GOOD_CAPTIVE_NETWORK_CURVE = new RssiCurve(
-            -160 /* start */, 18 /* bucketWidth */,
+            DefaultNetworkRecommendationProvider.CONSTANT_CURVE_START, 18 /* bucketWidth */,
             new byte[]{-128, -128, -128, -128, -128, -128, 21, 21, 21, -128},
             0 /* defaultActiveNetworkBoost */);
     private static final ScoredNetwork GOOD_CAPTIVE_NETWORK;
@@ -89,9 +89,9 @@ public class DefaultNetworkRecommendationProviderTest {
     private static final String ANY_NETWORK_STRING_UNQUOTED = "AnySsid";
     private static final String ANY_NETWORK_STRING =
             "\"AnySsid\",00:00:00:00:00:00"
-                    + "|-160,18,-128,-128,-128,-128,-128,-128,22,22,22,-128|0|0|NONE";
+                    + "|18,-128,-128,-128,-128,-128,-128,22,22,22,-128|0|0|NONE";
     private static final RssiCurve ANY_NETWORK_CURVE = new RssiCurve(
-            -160 /* start */, 18 /* bucketWidth */,
+            DefaultNetworkRecommendationProvider.CONSTANT_CURVE_START, 18 /* bucketWidth */,
             new byte[]{-128, -128, -128, -128, -128, -128, 22, 22, 22, -128},
             0 /* defaultActiveNetworkBoost */);
     private static final ScoredNetwork ANY_NETWORK = new ScoredNetwork(
@@ -101,9 +101,9 @@ public class DefaultNetworkRecommendationProviderTest {
     private static final String ANY_NETWORK_SPECIFIC_STRING_UNQUOTED = "AnySsid";
     private static final String ANY_NETWORK_SPECIFIC_STRING =
             "\"AnySsid\",ee:ee:ee:ee:ee:ee"
-                    + "|-160,18,-128,-128,-128,-128,-128,-128,23,23,23,-128|0|0|NONE";
+                    + "|18,-128,-128,-128,-128,-128,-128,23,23,23,-128|0|0|NONE";
     private static final RssiCurve ANY_NETWORK_SPECIFIC_CURVE = new RssiCurve(
-            -160 /* start */, 18 /* bucketWidth */,
+            DefaultNetworkRecommendationProvider.CONSTANT_CURVE_START, 18 /* bucketWidth */,
             new byte[]{-128, -128, -128, -128, -128, -128, 23, 23, 23, -128},
             0 /* defaultActiveNetworkBoost */);
     private static final ScoredNetwork ANY_NETWORK_SPECIFIC = new ScoredNetwork(
@@ -113,11 +113,11 @@ public class DefaultNetworkRecommendationProviderTest {
     private static final String BAD_NETWORK_STRING_UNQUOTED = "Bad";
     private static final String BAD_NETWORK_STRING =
             "\"Bad\",aa:bb:cc:dd:ee:ff"
-                    + "|-150,10,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128"
+                    + "|10,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128,-128"
                     + "|1|0|SD";
     private static final RssiCurve BAD_NETWORK_CURVE =
             new RssiCurve(
-                    -150 /* start */,
+                    DefaultNetworkRecommendationProvider.CONSTANT_CURVE_START,
                     10 /* bucketWidth */,
                     new byte[] {-128, -128, -128, -128, -128, -128,
                             -128, -128, -128, -128, -128, -128, -128},

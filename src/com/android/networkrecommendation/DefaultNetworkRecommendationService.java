@@ -48,7 +48,7 @@ public class DefaultNetworkRecommendationService extends Service {
         mProvider = new DefaultNetworkRecommendationProvider(mHandler,
                 networkScoreManager, new DefaultNetworkRecommendationProvider.ScoreStorage());
         mWifiNotificationController = new WifiNotificationController(
-                this, getContentResolver(), mHandler, networkScoreManager,
+                this, getContentResolver(), mHandler, mProvider,
                 getSystemService(WifiManager.class), getSystemService(NotificationManager.class),
                 new WifiNotificationHelper(this, mProvider));
         mWifiWakeupController = new WifiWakeupController(this, getContentResolver(),

@@ -16,7 +16,6 @@
 
 package com.android.networkrecommendation;
 
-import android.annotation.Nullable;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
@@ -34,8 +33,8 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
-import android.os.UserHandle;
 import android.provider.Settings;
+import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 
 import java.io.FileDescriptor;
@@ -53,8 +52,7 @@ public class WifiNotificationController {
      * The icon to show in the 'available networks' notification. This will also
      * be the ID of the Notification given to the NotificationManager.
      */
-    private static final int ICON_NETWORKS_AVAILABLE =
-            com.android.internal.R.drawable.stat_notify_wifi_in_range;
+    private static final int ICON_NETWORKS_AVAILABLE = R.drawable.stat_notify_wifi_in_range;
     /**
      * When a notification is shown, we wait this amount before possibly showing it again.
      */
@@ -136,10 +134,12 @@ public class WifiNotificationController {
         showFailedToConnectNotification();
     };
 
+    private static final String TAG = "WifiNotification";
+
     private final Context mContext;
     private final Handler mHandler;
     private final ContentResolver mContentResolver;
-    private final NetworkScoreManager mScoreManager;
+    private final SynchronousNetworkRecommendationProvider mNetworkRecommendationProvider;
     private final WifiManager mWifiManager;
     private final NotificationManager mNotificationManager;
     private final WifiNotificationHelper mWifiNotificationHelper;
@@ -148,11 +148,12 @@ public class WifiNotificationController {
     private volatile int mWifiState;
 
     WifiNotificationController(Context context, ContentResolver contentResolver, Handler handler,
-            NetworkScoreManager networkScoreManager, WifiManager wifiManager,
-            NotificationManager notificationManager, WifiNotificationHelper helper) {
+            SynchronousNetworkRecommendationProvider networkRecommendationProvider,
+            WifiManager wifiManager, NotificationManager notificationManager,
+            WifiNotificationHelper helper) {
         mContext = context;
         mContentResolver = contentResolver;
-        mScoreManager = networkScoreManager;
+        mNetworkRecommendationProvider = networkRecommendationProvider;
         mWifiManager = wifiManager;
         mNotificationManager = notificationManager;
         mHandler = handler;
@@ -252,11 +253,13 @@ public class WifiNotificationController {
         // don't bother doing any of the following
         if (!mNotificationEnabled) return;
         if (mWifiState != WifiManager.WIFI_STATE_ENABLED) return;
+        if (scanResults == null || scanResults.isEmpty()) return;
 
         NetworkInfo.State state = NetworkInfo.State.DISCONNECTED;
         if (networkInfo != null) {
             state = networkInfo.getState();
         }
+
 
         if (state == NetworkInfo.State.DISCONNECTED
                 || state == NetworkInfo.State.UNKNOWN) {
@@ -287,6 +290,7 @@ public class WifiNotificationController {
 
     /**
      * Uses {@link NetworkScoreManager} to choose a qualified network out of the list of
+     * {@link ScanResult}s.
      *
      * @return returns the best qualified open networks, if any.
      */
@@ -306,7 +310,8 @@ public class WifiNotificationController {
         RecommendationRequest request = new RecommendationRequest.Builder()
                 .setScanResults(openNetworks.toArray(new ScanResult[openNetworks.size()]))
                 .build();
-        return mScoreManager.requestRecommendation(request);
+
+        return mNetworkRecommendationProvider.requestRecommendation(request);
     }
 
     /**
@@ -393,8 +398,7 @@ public class WifiNotificationController {
     }
 
     private void postNotification(Notification notification) {
-        mNotificationManager.notifyAsUser(null /* tag */, ICON_NETWORKS_AVAILABLE,
-                notification, UserHandle.ALL);
+        mNotificationManager.notify(null /* tag */, ICON_NETWORKS_AVAILABLE, notification);
     }
 
     /**
@@ -410,7 +414,7 @@ public class WifiNotificationController {
     }
 
     private void removeNotification() {
-        mNotificationManager.cancelAsUser(null /* tag */, ICON_NETWORKS_AVAILABLE, UserHandle.ALL);
+        mNotificationManager.cancel(null /* tag */, ICON_NETWORKS_AVAILABLE);
         mNotificationShown = false;
     }
 

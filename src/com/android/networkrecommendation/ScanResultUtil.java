@@ -18,9 +18,8 @@ package com.android.networkrecommendation;
 
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
+import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
-
-import com.android.internal.annotations.VisibleForTesting;
 
 /**
  * Scan result utility for any {@link ScanResult} related operations.
@@ -69,6 +68,26 @@ public class ScanResultUtil {
     @VisibleForTesting
     public static String createQuotedSSID(String ssid) {
         return "\"" + ssid + "\"";
+    }
+
+    /** @return {@code true} if the result is for a 2.4GHz network. */
+    public static boolean is24GHz(ScanResult result) {
+        return is24GHz(result.frequency);
+    }
+
+    /** @return {@code true} if the frequency is for a 2.4GHz network. */
+    public static boolean is24GHz(int freq) {
+        return freq > 2400 && freq < 2500;
+    }
+
+    /** @return {@code true} if the result is for a 5GHz network. */
+    public static boolean is5GHz(ScanResult result) {
+        return is5GHz(result.frequency);
+    }
+
+    /** @return {@code true} if the frequency is for a 5GHz network. */
+    public static boolean is5GHz(int freq) {
+        return freq > 4900 && freq < 5900;
     }
 
     /**

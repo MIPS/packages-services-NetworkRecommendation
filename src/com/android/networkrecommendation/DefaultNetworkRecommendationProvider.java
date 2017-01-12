@@ -59,7 +59,7 @@ import java.util.List;
  *
  * <p>SCORE: "Quoted SSID",bssid|$RSSI_CURVE|metered|captivePortal|BADGE
  *
- * <p>RSSI_CURVE: start,bucketWidth,score,score,score,score,...
+ * <p>RSSI_CURVE: bucketWidth,score,score,score,score,...
  *
  * <p>curve, metered and captive portal are optional, as expressed by an empty value.
  *
@@ -69,17 +69,17 @@ import java.util.List;
  * <p>Eg, A high quality, paid network with captive portal:
  * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
  * '\"Metered\",aa:bb:cc:dd:ee:ff\|
- * -150,10,-128,-128,-128,-128,-128,-128,-128,-128,27,27,27,27,27,-128\|1\|1'
+ * 10,-128,-128,-128,-128,-128,-128,-128,-128,27,27,27,27,27,-128\|1\|1'
  *
  * <p>Eg, A high quality, unmetered network with captive portal:
  * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
  * '\"Captive\",aa:bb:cc:dd:ee:ff\|
- * -150,10,-128,-128,-128,-128,-128,-128,-128,-128,28,28,28,28,28,-128\|0\|1'
+ * 10,-128,-128,-128,-128,-128,-128,-128,-128,28,28,28,28,28,-128\|0\|1'
  *
  * <p>Eg, A high quality, unmetered network with any bssid:
  * $ adb shell dumpsys activity service DefaultNetworkRecommendationService addScore \
  * '\"AnySsid\",00:00:00:00:00:00\|
- * -150,10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,29,-128\|0\|0'
+ * 10,-128,-128,-128,-128,-128,-128,-128,-128,29,29,29,29,29,-128\|0\|0'
  */
 @VisibleForTesting
 public class DefaultNetworkRecommendationProvider
@@ -90,10 +90,17 @@ public class DefaultNetworkRecommendationProvider
 
     private static final String WILDCARD_MAC = "00:00:00:00:00:00";
 
+    /**
+     * The lowest RSSI value at which a fixed score should apply.
+     * Only used for development / testing purpose.
+     */
+    @VisibleForTesting
+    static final int CONSTANT_CURVE_START = -150;
+
     @VisibleForTesting
     static final RssiCurve BADGE_CURVE_SD =
             new RssiCurve(
-                    -150 /* start */,
+                    CONSTANT_CURVE_START,
                     10 /* bucketWidth */,
                     new byte[] {0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10},
                     0 /* defaultActiveNetworkBoost */);
@@ -101,7 +108,7 @@ public class DefaultNetworkRecommendationProvider
     @VisibleForTesting
     static final RssiCurve BADGE_CURVE_HD =
             new RssiCurve(
-                    -150 /* start */,
+                    CONSTANT_CURVE_START,
                     10 /* bucketWidth */,
                     new byte[] {0, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20},
                     0 /* defaultActiveNetworkBoost */);
@@ -109,7 +116,7 @@ public class DefaultNetworkRecommendationProvider
     @VisibleForTesting
     static final RssiCurve BADGE_CURVE_4K =
             new RssiCurve(
-                    -150 /* start */,
+                    CONSTANT_CURVE_START,
                     10 /* bucketWidth */,
                     new byte[] {0, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30},
                     0 /* defaultActiveNetworkBoost */);
@@ -306,11 +313,10 @@ public class DefaultNetworkRecommendationProvider
         NetworkKey networkKey = new NetworkKey(new WifiKey(splitWifiKey[0], splitWifiKey[1]));
 
         String[] splitRssiCurve = splitScore[1].split(",");
-        int start = Integer.parseInt(splitRssiCurve[0]);
-        int bucketWidth = Integer.parseInt(splitRssiCurve[1]);
-        byte[] rssiBuckets = new byte[splitRssiCurve.length - 2];
-        for (int i = 2; i < splitRssiCurve.length; i++) {
-            rssiBuckets[i - 2] = Integer.valueOf(splitRssiCurve[i]).byteValue();
+        int bucketWidth = Integer.parseInt(splitRssiCurve[0]);
+        byte[] rssiBuckets = new byte[splitRssiCurve.length - 1];
+        for (int i = 1; i < splitRssiCurve.length; i++) {
+            rssiBuckets[i - 1] = Integer.valueOf(splitRssiCurve[i]).byteValue();
         }
 
         boolean meteredHint = "1".equals(splitScore[2]);
@@ -332,7 +338,7 @@ public class DefaultNetworkRecommendationProvider
                         ScoredNetwork.ATTRIBUTES_KEY_BADGING_CURVE, BADGE_CURVE_4K);
             }
         }
-        RssiCurve rssiCurve = new RssiCurve(start, bucketWidth, rssiBuckets, 0);
+        RssiCurve rssiCurve = new RssiCurve(CONSTANT_CURVE_START, bucketWidth, rssiBuckets, 0);
         return new ScoredNetwork(networkKey, rssiCurve, meteredHint, attributes);
     }
 

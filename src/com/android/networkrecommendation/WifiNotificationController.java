@@ -16,7 +16,6 @@
 
 package com.android.networkrecommendation;
 
-import android.annotation.Nullable;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
@@ -34,8 +33,8 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
-import android.os.UserHandle;
 import android.provider.Settings;
+import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 
 import java.io.FileDescriptor;
@@ -53,8 +52,7 @@ public class WifiNotificationController {
      * The icon to show in the 'available networks' notification. This will also
      * be the ID of the Notification given to the NotificationManager.
      */
-    private static final int ICON_NETWORKS_AVAILABLE =
-            com.android.internal.R.drawable.stat_notify_wifi_in_range;
+    private static final int ICON_NETWORKS_AVAILABLE = R.drawable.stat_notify_wifi_in_range;
     /**
      * When a notification is shown, we wait this amount before possibly showing it again.
      */
@@ -393,8 +391,7 @@ public class WifiNotificationController {
     }
 
     private void postNotification(Notification notification) {
-        mNotificationManager.notifyAsUser(null /* tag */, ICON_NETWORKS_AVAILABLE,
-                notification, UserHandle.ALL);
+        mNotificationManager.notify(null /* tag */, ICON_NETWORKS_AVAILABLE, notification);
     }
 
     /**
@@ -410,7 +407,7 @@ public class WifiNotificationController {
     }
 
     private void removeNotification() {
-        mNotificationManager.cancelAsUser(null /* tag */, ICON_NETWORKS_AVAILABLE, UserHandle.ALL);
+        mNotificationManager.cancel(null /* tag */, ICON_NETWORKS_AVAILABLE);
         mNotificationShown = false;
     }
 

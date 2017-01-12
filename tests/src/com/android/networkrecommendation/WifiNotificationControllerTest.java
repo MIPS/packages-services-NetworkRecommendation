@@ -160,8 +160,7 @@ public class WifiNotificationControllerTest {
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         verify(mNotificationManager, never())
-                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
-                        any(UserHandle.class));
+                .notify(any(String.class), anyInt(), any(Notification.class));
 
         // Changing to and from "SCANNING" state should not affect the counter.
         TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
@@ -169,15 +168,13 @@ public class WifiNotificationControllerTest {
         TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
                 NetworkInfo.DetailedState.DISCONNECTED);
         verify(mNotificationManager, never())
-                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
-                        any(UserHandle.class));
+                .notify(any(String.class), anyInt(), any(Notification.class));
         // The third scan result notification will trigger the notification.
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         verify(mWifiNotificationHelper).createMainNotification(any(WifiConfiguration.class),
                 any(Bitmap.class));
         verify(mNotificationManager)
-                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
-                        any(UserHandle.class));
+                .notify(any(String.class), anyInt(), any(Notification.class));
         verify(mNotificationManager, never())
                 .cancelAsUser(any(String.class), anyInt(), any(UserHandle.class));
     }
@@ -200,16 +197,14 @@ public class WifiNotificationControllerTest {
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         verify(mNotificationManager, never())
-                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
-                        any(UserHandle.class));
+                .notify(any(String.class), anyInt(), any(Notification.class));
 
         // DoNotConnect Recommendation result.
         when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
                 .thenReturn(RecommendationResult.createDoNotConnectRecommendation());
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         verify(mNotificationManager, never())
-                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
-                        any(UserHandle.class));
+                .notify(any(String.class), anyInt(), any(Notification.class));
     }
 
     /**
@@ -233,8 +228,7 @@ public class WifiNotificationControllerTest {
         verify(mWifiNotificationHelper).createMainNotification(any(WifiConfiguration.class),
                 any(Bitmap.class));
         verify(mNotificationManager)
-                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
-                        any(UserHandle.class));
+                .notify(any(String.class), anyInt(), any(Notification.class));
 
         // Send connect intent, should attempt to connect to Wi-Fi
         Intent intent = new Intent(
@@ -246,8 +240,7 @@ public class WifiNotificationControllerTest {
 
         // Show connecting notification.
         verify(mNotificationManager, times(2))
-                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
-                        any(UserHandle.class));
+                .notify(any(String.class), anyInt(), any(Notification.class));
         // Verify callback to dismiss connecting notification exists.
         assertTrue(mHandler.hasCallbacks(
                 mWifiNotificationController.mShowFailedToConnectNotificationRunnable));
@@ -258,8 +251,7 @@ public class WifiNotificationControllerTest {
         verify(mWifiNotificationHelper).createConnectedNotification(any(WifiConfiguration.class),
                 any(Bitmap.class));
         verify(mNotificationManager, times(3))
-                .notifyAsUser(any(String.class), anyInt(), any(Notification.class),
-                        any(UserHandle.class));
+                .notify(any(String.class), anyInt(), any(Notification.class));
 
         // Verify callback to dismiss connected notification exists.
         assertTrue(mHandler.hasCallbacks(

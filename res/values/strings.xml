@@ -24,4 +24,6 @@
     <string name="wifi_available_connecting">Connecting</string>
     <string name="wifi_available_connected">Connected</string>
     <string name="wifi_available_failed">FAILED TO CONNECT</string>
+
+    <string name="android_system_label">Android System</string>
 </resources>

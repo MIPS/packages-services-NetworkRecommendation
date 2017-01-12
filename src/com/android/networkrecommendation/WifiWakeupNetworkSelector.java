@@ -69,8 +69,9 @@ public class WifiWakeupNetworkSelector {
             if (wifiConfiguration == null) {
                 continue;
             }
-            if (scanResult.is5GHz() && scanResult.level < mThresholdQualifiedRssi5
-                    || scanResult.is24GHz() && scanResult.level < mThresholdQualifiedRssi24) {
+            if (ScanResultUtil.is5GHz(scanResult) && scanResult.level < mThresholdQualifiedRssi5
+                    || ScanResultUtil.is24GHz(scanResult)
+                    && scanResult.level < mThresholdQualifiedRssi24) {
                 continue;
             }
             if (!ScanResultUtil.doesScanResultMatchWithNetwork(scanResult, wifiConfiguration)) {
@@ -95,7 +96,7 @@ public class WifiWakeupNetworkSelector {
         score += (rssi + mRssiScoreOffset) * mRssiScoreSlope;
 
         // 5GHz band bonus.
-        if (scanResult.is5GHz()) {
+        if (ScanResultUtil.is5GHz(scanResult)) {
             score += mBand5GHzAward;
         }
 

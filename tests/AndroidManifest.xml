@@ -17,6 +17,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.networkrecommendation.tests">
 
+    <uses-permission android:name="android.permission.BIND_NETWORK_RECOMMENDATION_SERVICE"/>
+    <uses-permission android:name="android.permission.REQUEST_NETWORK_SCORES"/>
+
     <application>
         <uses-library android:name="android.test.runner" />
     </application>

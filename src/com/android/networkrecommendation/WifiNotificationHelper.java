@@ -18,7 +18,6 @@ package com.android.networkrecommendation;
 
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
 
-import android.annotation.NonNull;
 import android.app.Notification;
 import android.app.Notification.Action;
 import android.app.PendingIntent;
@@ -34,14 +33,12 @@ import android.net.ScoredNetwork;
 import android.net.WifiKey;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
-
-import com.android.internal.util.ImageUtils;
 
 import java.util.List;
 
@@ -148,41 +145,39 @@ public class WifiNotificationHelper {
                 FLAG_UPDATE_CURRENT);
         return new Notification.Builder(mContext)
                 .setDeleteIntent(deleteIntent)
-                .setSmallIcon(com.android.internal.R.drawable.stat_notify_wifi_in_range)
+                .setSmallIcon(R.drawable.stat_notify_wifi_in_range)
                 .setLargeIcon(badge)
                 .setAutoCancel(true)
-                .setColor(mContext.getColor(
-                        com.android.internal.R.color.system_notification_accent_color))
                 .setTicker(title)
                 .setContentTitle(title)
-                .setContentText(config.getPrintableSsid())
+                .setContentText(WifiConfigurationUtil.getPrintableSsid(config))
                 .addExtras(getSystemLabelExtras());
     }
 
     private Bundle getSystemLabelExtras() {
         Bundle extras = new Bundle();
         extras.putString(Notification.EXTRA_SUBSTITUTE_APP_NAME,
-                mContext.getString(com.android.internal.R.string.android_system_label));
+                mContext.getString(R.string.android_system_label));
         return extras;
     }
 
     //TODO(34177812): Share this logic between systemUi and Settings.
     static final int[] WIFI_PIE_FOR_BADGING = {
-            com.android.internal.R.drawable.ic_signal_wifi_badged_0_bars,
-            com.android.internal.R.drawable.ic_signal_wifi_badged_1_bar,
-            com.android.internal.R.drawable.ic_signal_wifi_badged_2_bars,
-            com.android.internal.R.drawable.ic_signal_wifi_badged_3_bars,
-            com.android.internal.R.drawable.ic_signal_wifi_badged_4_bars
+            R.drawable.ic_signal_wifi_badged_0_bars,
+            R.drawable.ic_signal_wifi_badged_1_bar,
+            R.drawable.ic_signal_wifi_badged_2_bars,
+            R.drawable.ic_signal_wifi_badged_3_bars,
+            R.drawable.ic_signal_wifi_badged_4_bars
     };
 
     private int getWifiBadgeResourceForEnum(int badgeEnum) {
         switch (badgeEnum) {
             case ScoredNetwork.BADGING_SD:
-                return com.android.internal.R.drawable.ic_signal_wifi_badged_sd;
+                return R.drawable.ic_signal_wifi_badged_sd;
             case ScoredNetwork.BADGING_HD:
-                return com.android.internal.R.drawable.ic_signal_wifi_badged_hd;
+                return R.drawable.ic_signal_wifi_badged_hd;
             case ScoredNetwork.BADGING_4K:
-                return com.android.internal.R.drawable.ic_signal_wifi_badged_4k;
+                return R.drawable.ic_signal_wifi_badged_4k;
             default:
                 throw new IllegalArgumentException("No badge resource for enum :" + badgeEnum);
         }
@@ -222,7 +217,7 @@ public class WifiNotificationHelper {
 
     private ScanResult findMatchingScanResult(List<ScanResult> scanResults,
             WifiConfiguration wifiConfiguration) {
-        String ssid = WifiInfo.removeDoubleQuotes(wifiConfiguration.SSID);
+        String ssid = WifiConfigurationUtil.removeDoubleQuotes(wifiConfiguration);
         String bssid = wifiConfiguration.BSSID;
         for (ScanResult scanResult : scanResults) {
             if (ssid.equals(scanResult.SSID) && bssid.equals(scanResult.BSSID)) {

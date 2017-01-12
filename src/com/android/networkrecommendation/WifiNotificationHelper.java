@@ -207,6 +207,9 @@ public class WifiNotificationHelper {
     }
 
     private Bitmap getBadgedWifiBitmap(int badgeEnum, int rssi) {
+        if (badgeEnum == ScoredNetwork.BADGING_NONE) {
+            return null;
+        }
         int signalLevel = WifiManager.calculateSignalLevel(rssi, 5);
         LayerDrawable layerDrawable = new LayerDrawable(new Drawable[]{
                 mContext.getDrawable(WIFI_PIE_FOR_BADGING[signalLevel]),

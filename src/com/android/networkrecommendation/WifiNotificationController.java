@@ -134,10 +134,12 @@ public class WifiNotificationController {
         showFailedToConnectNotification();
     };
 
+    private static final String TAG = "WifiNotification";
+
     private final Context mContext;
     private final Handler mHandler;
     private final ContentResolver mContentResolver;
-    private final NetworkScoreManager mScoreManager;
+    private final SynchronousNetworkRecommendationProvider mNetworkRecommendationProvider;
     private final WifiManager mWifiManager;
     private final NotificationManager mNotificationManager;
     private final WifiNotificationHelper mWifiNotificationHelper;
@@ -146,11 +148,12 @@ public class WifiNotificationController {
     private volatile int mWifiState;
 
     WifiNotificationController(Context context, ContentResolver contentResolver, Handler handler,
-            NetworkScoreManager networkScoreManager, WifiManager wifiManager,
-            NotificationManager notificationManager, WifiNotificationHelper helper) {
+            SynchronousNetworkRecommendationProvider networkRecommendationProvider,
+            WifiManager wifiManager, NotificationManager notificationManager,
+            WifiNotificationHelper helper) {
         mContext = context;
         mContentResolver = contentResolver;
-        mScoreManager = networkScoreManager;
+        mNetworkRecommendationProvider = networkRecommendationProvider;
         mWifiManager = wifiManager;
         mNotificationManager = notificationManager;
         mHandler = handler;
@@ -250,11 +253,13 @@ public class WifiNotificationController {
         // don't bother doing any of the following
         if (!mNotificationEnabled) return;
         if (mWifiState != WifiManager.WIFI_STATE_ENABLED) return;
+        if (scanResults == null || scanResults.isEmpty()) return;
 
         NetworkInfo.State state = NetworkInfo.State.DISCONNECTED;
         if (networkInfo != null) {
             state = networkInfo.getState();
         }
+
 
         if (state == NetworkInfo.State.DISCONNECTED
                 || state == NetworkInfo.State.UNKNOWN) {
@@ -285,6 +290,7 @@ public class WifiNotificationController {
 
     /**
      * Uses {@link NetworkScoreManager} to choose a qualified network out of the list of
+     * {@link ScanResult}s.
      *
      * @return returns the best qualified open networks, if any.
      */
@@ -304,7 +310,8 @@ public class WifiNotificationController {
         RecommendationRequest request = new RecommendationRequest.Builder()
                 .setScanResults(openNetworks.toArray(new ScanResult[openNetworks.size()]))
                 .build();
-        return mScoreManager.requestRecommendation(request);
+
+        return mNetworkRecommendationProvider.requestRecommendation(request);
     }
 
     /**

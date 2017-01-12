@@ -83,7 +83,7 @@ import javax.annotation.concurrent.GuardedBy;
  */
 @VisibleForTesting
 public class DefaultNetworkRecommendationProvider
-        extends NetworkRecommendationProvider implements CachedScoredNetworkProvider {
+        extends NetworkRecommendationProvider implements SynchronousNetworkRecommendationProvider {
     static final String TAG = "DefaultNetRecProvider";
     static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
     static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
@@ -139,10 +139,19 @@ public class DefaultNetworkRecommendationProvider
         mStorage = storage;
     }
 
-    /** Recommend the wireless network with the highest RSSI. */
+    /**
+     * Recommend the wireless network with the highest RSSI and run
+     * {@link ResultCallback#onResult(RecommendationResult)}.
+     */
     @Override
     public void onRequestRecommendation(RecommendationRequest request,
             ResultCallback callback) {
+        callback.onResult(requestRecommendation(request));
+    }
+
+    @Override
+    /** Recommend the wireless network with the highest RSSI. */
+    public RecommendationResult requestRecommendation(RecommendationRequest request) {
         ScanResult recommendedScanResult = null;
         int recommendedScore = Integer.MIN_VALUE;
 
@@ -210,7 +219,7 @@ public class DefaultNetworkRecommendationProvider
             mRecommendationCounter++;
             if (DEBUG) Log.d(TAG, "Recommending network: " + configToString(mLastRecommended));
         }
-        callback.onResult(recommendationResult);
+        return recommendationResult;
     }
 
     /** Score networks based on a few properties ... */

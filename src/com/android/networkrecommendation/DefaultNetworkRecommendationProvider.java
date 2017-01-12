@@ -28,17 +28,17 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
-
-import com.android.internal.annotations.GuardedBy;
-import com.android.internal.annotations.VisibleForTesting;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.annotation.concurrent.GuardedBy;
 
 /**
  * In memory, debuggable network recommendation provider.
@@ -161,7 +161,8 @@ public class DefaultNetworkRecommendationProvider
                 }
 
                 final NetworkKey networkKey = new NetworkKey(
-                        new WifiKey(quoteSsid(scanResult), scanResult.BSSID));
+                        new WifiKey(ScanResultUtil.createQuotedSSID(scanResult.SSID),
+                                scanResult.BSSID));
                 if (VERBOSE) Log.v(TAG, "Evaluating network: " + networkKey);
 
                 // We will only score networks we know about.
@@ -198,7 +199,7 @@ public class DefaultNetworkRecommendationProvider
         } else {
             // Build a configuration based on the scan.
             WifiConfiguration recommendedConfig = new WifiConfiguration();
-            recommendedConfig.SSID = quoteSsid(recommendedScanResult);
+            recommendedConfig.SSID = ScanResultUtil.createQuotedSSID(recommendedScanResult.SSID);
             recommendedConfig.BSSID = recommendedScanResult.BSSID;
             recommendedConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
             recommendationResult = RecommendationResult
@@ -351,23 +352,8 @@ public class DefaultNetworkRecommendationProvider
                 .append("ID=").append(config.networkId)
                 .append(",SSID=").append(config.SSID)
                 .append(",useExternalScores=").append(config.useExternalScores)
-                .append(",meteredHint=").append(config.meteredHint)
-                .append(",meteredOverride=").append(config.meteredOverride);
+                .append(",meteredHint=").append(config.meteredHint);
         return sb.toString();
-    }
-
-    /**
-     * Add quotes to ScanResult ssids. WifiConfigurations, WifiKeys and ScoredNetworks have the
-     * SSID quoted but scan results don't.
-     */
-    private static String quoteSsid(ScanResult scanResult) {
-        if (scanResult.wifiSsid != null) {
-            return "\"" + scanResult.wifiSsid + "\"";
-        } else if (scanResult.SSID != null) {
-            return "\"" + scanResult.SSID + "\"";
-        } else {
-            throw new IllegalArgumentException("ScanResult is missing an SSID.");
-        }
     }
 
     /** Stores scores about networks. Initial implementation is in-memory-only. */

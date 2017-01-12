@@ -24,17 +24,15 @@ import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Log;
-
-import com.android.internal.annotations.VisibleForTesting;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -161,15 +159,14 @@ public class WifiWakeupController {
         for (int i = 0; i < wifiConfigurations.size(); i++) {
             WifiConfiguration wifiConfiguration = wifiConfigurations.get(i);
             if (wifiConfiguration.status != WifiConfiguration.Status.ENABLED
-                    || wifiConfiguration.ephemeral
                     || wifiConfiguration.useExternalScores) {
-                continue; // Ignore disabled, ephemeral and externally scored networks.
+                continue; // Ignore disabled and externally scored networks.
             }
             if (wifiConfiguration.hasNoInternetAccess()
-                    || wifiConfiguration.noInternetAccessExpected) {
+                    || wifiConfiguration.isNoInternetAccessExpected()) {
                 continue; // Ignore networks that will likely not have internet access.
             }
-            String ssid = WifiInfo.removeDoubleQuotes(wifiConfiguration.SSID);
+            String ssid = WifiConfigurationUtil.removeDoubleQuotes(wifiConfiguration);
             if (TextUtils.isEmpty(ssid)) {
                 continue;
             }

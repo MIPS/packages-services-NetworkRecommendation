@@ -16,11 +16,9 @@
 
 package com.android.networkrecommendation;
 
-import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.net.NetworkScoreManager;
-import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -36,8 +34,6 @@ public class DefaultNetworkRecommendationService extends Service {
     private HandlerThread mHandlerThread;
     private Handler mHandler;
     private DefaultNetworkRecommendationProvider mProvider;
-    private WifiNotificationController mWifiNotificationController;
-    private WifiWakeupController mWifiWakeupController;
 
     @Override
     public void onCreate() {
@@ -47,33 +43,20 @@ public class DefaultNetworkRecommendationService extends Service {
         NetworkScoreManager networkScoreManager = getSystemService(NetworkScoreManager.class);
         mProvider = new DefaultNetworkRecommendationProvider(mHandler,
                 networkScoreManager, new DefaultNetworkRecommendationProvider.ScoreStorage());
-        mWifiNotificationController = new WifiNotificationController(
-                this, getContentResolver(), mHandler, networkScoreManager,
-                getSystemService(WifiManager.class), getSystemService(NotificationManager.class),
-                new WifiNotificationHelper(this, mProvider));
-        mWifiWakeupController = new WifiWakeupController(this, getContentResolver(),
-                mHandlerThread.getLooper(), getSystemService(WifiManager.class),
-                new WifiWakeupNetworkSelector(getResources()));
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        mWifiWakeupController.start();
-        mWifiNotificationController.start();
         return mProvider.getBinder();
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
-        mWifiWakeupController.stop();
-        mWifiNotificationController.stop();
         return super.onUnbind(intent);
     }
 
     @Override
     protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
         mProvider.dump(fd, writer, args);
-        mWifiNotificationController.dump(fd, writer, args);
-        mWifiWakeupController.dump(fd, writer, args);
     }
 }

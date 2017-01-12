@@ -65,4 +65,25 @@ public class WifiConfigurationUtil {
         return !(isConfigForWepNetwork(config) || isConfigForPskNetwork(config)
                 || isConfigForEapNetwork(config));
     }
+
+    /** @return a ssid that can be shown to the user. */
+    public static String getPrintableSsid(WifiConfiguration config) {
+        if (config.SSID == null) return "";
+        final int length = config.SSID.length();
+        if (length > 2 && (config.SSID.charAt(0) == '"') && config.SSID.charAt(length - 1) == '"') {
+            return config.SSID.substring(1, length - 1);
+        }
+        return config.SSID;
+    }
+
+    /** Removes " from the ssid in a wifi configuration (to match against a ScanResult). */
+    public static String removeDoubleQuotes(WifiConfiguration config) {
+        if (config.SSID == null) return null;
+        final int length = config.SSID.length();
+        if ((length > 1) && (config.SSID.charAt(0) == '"')
+                && (config.SSID.charAt(length - 1) == '"')) {
+            return config.SSID.substring(1, length - 1);
+        }
+        return config.SSID;
+    }
 }

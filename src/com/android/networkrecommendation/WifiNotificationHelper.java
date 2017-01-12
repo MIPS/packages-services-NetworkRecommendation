@@ -47,10 +47,10 @@ import java.util.List;
  */
 public class WifiNotificationHelper {
     private final Context mContext;
-    private final CachedScoredNetworkProvider mCachedScoredNetworkProvider;
+    private final SynchronousNetworkRecommendationProvider mCachedScoredNetworkProvider;
 
-    WifiNotificationHelper(
-            Context context, CachedScoredNetworkProvider cachedScoredNetworkProvider) {
+    public WifiNotificationHelper(
+            Context context, SynchronousNetworkRecommendationProvider cachedScoredNetworkProvider) {
         mContext = context;
         mCachedScoredNetworkProvider = cachedScoredNetworkProvider;
     }
@@ -60,7 +60,7 @@ public class WifiNotificationHelper {
      * Wi-Fi picker activity, and "Connect" prompts {@link WifiNotificationController}
      * to connect to the recommended network.
      */
-    Notification createMainNotification(WifiConfiguration config, Bitmap badge) {
+    public Notification createMainNotification(WifiConfiguration config, Bitmap badge) {
         PendingIntent optionsIntent = PendingIntent.getActivity(
                 mContext, 0, new Intent(WifiManager.ACTION_PICK_WIFI_NETWORK), FLAG_UPDATE_CURRENT);
         Action optionsAction = new Action.Builder(
@@ -88,7 +88,7 @@ public class WifiNotificationHelper {
      * Creates the notification that indicates the controller is attempting to connect
      * to the recommended network.
      */
-    Notification createConnectingNotification(WifiConfiguration config, Bitmap badge) {
+    public Notification createConnectingNotification(WifiConfiguration config, Bitmap badge) {
         Action connecting = new Action.Builder(
                 null /* icon */,
                 mContext.getText(R.string.wifi_available_connecting),
@@ -104,7 +104,7 @@ public class WifiNotificationHelper {
      * Creates the notification that indicates the controller successfully connected
      * to the recommended network.
      */
-    Notification createConnectedNotification(WifiConfiguration config, Bitmap badge) {
+    public Notification createConnectedNotification(WifiConfiguration config, Bitmap badge) {
         Action connected = new Action.Builder(
                 null /* icon */,
                 mContext.getText(R.string.wifi_available_connected),
@@ -119,7 +119,7 @@ public class WifiNotificationHelper {
      * Creates the notification that indicates the controller failed to connect to
      * the recommended network.
      */
-    Notification createFailedToConnectNotification(WifiConfiguration config) {
+    public Notification createFailedToConnectNotification(WifiConfiguration config) {
         Spannable failedText =
                 new SpannableString(mContext.getText(R.string.wifi_available_failed));
         Resources resources = mContext.getResources();
@@ -172,6 +172,8 @@ public class WifiNotificationHelper {
 
     private int getWifiBadgeResourceForEnum(int badgeEnum) {
         switch (badgeEnum) {
+            case ScoredNetwork.BADGING_NONE:
+                return 0;
             case ScoredNetwork.BADGING_SD:
                 return R.drawable.ic_signal_wifi_badged_sd;
             case ScoredNetwork.BADGING_HD:
@@ -187,7 +189,7 @@ public class WifiNotificationHelper {
      * Creates a Wi-Fi badge for the notification using matching {@link ScanResult}'s RSSI
      * and badging from {@link CachedScoredNetworkProvider}.
      */
-    Bitmap createNotificationBadgeBitmap(
+    public Bitmap createNotificationBadgeBitmap(
             @NonNull WifiConfiguration config,
             @NonNull List<ScanResult> scanResults) {
         ScanResult matchingScanResult = findMatchingScanResult(scanResults, config);
@@ -205,8 +207,9 @@ public class WifiNotificationHelper {
     }
 
     private Bitmap getBadgedWifiBitmap(int badgeEnum, int rssi) {
+        int signalLevel = WifiManager.calculateSignalLevel(rssi, 5);
         LayerDrawable layerDrawable = new LayerDrawable(new Drawable[]{
-                mContext.getDrawable(WIFI_PIE_FOR_BADGING[rssi]),
+                mContext.getDrawable(WIFI_PIE_FOR_BADGING[signalLevel]),
                 mContext.getDrawable(getWifiBadgeResourceForEnum(badgeEnum))});
         layerDrawable.setTint(mContext.getColor(R.color.color_tint));
         Resources resources = mContext.getResources();

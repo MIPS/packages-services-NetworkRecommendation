@@ -71,17 +71,15 @@ public class WifiWakeupControllerTest {
 
     static {
         SAVED_WIFI_CONFIGURATION.SSID = "\"" + SAVED_SCAN_RESULT.SSID + "\"";
-        makeConnectable(SAVED_WIFI_CONFIGURATION);
+        SAVED_WIFI_CONFIGURATION.status = WifiConfiguration.Status.CURRENT;
+        SAVED_WIFI_CONFIGURATION.validatedInternetAccess = true;
         SAVED_WIFI_CONFIGURATION2.SSID = "\"" + SAVED_SCAN_RESULT.SSID + "\"";
-        makeConnectable(SAVED_WIFI_CONFIGURATION2);
+        SAVED_WIFI_CONFIGURATION2.status = WifiConfiguration.Status.ENABLED;
+        SAVED_WIFI_CONFIGURATION2.validatedInternetAccess = true;
         SAVED_WIFI_CONFIGURATION_EXTERNAL.SSID = "\"" + SAVED_SCAN_RESULT_EXTERNAL.SSID + "\"";
         SAVED_WIFI_CONFIGURATION_EXTERNAL.useExternalScores = true;
-        makeConnectable(SAVED_WIFI_CONFIGURATION_EXTERNAL);
-    }
-
-    private static void makeConnectable(WifiConfiguration wifiConfiguration) {
-        wifiConfiguration.status = WifiConfiguration.Status.ENABLED;
-        wifiConfiguration.validatedInternetAccess = true;
+        SAVED_WIFI_CONFIGURATION_EXTERNAL.status = WifiConfiguration.Status.ENABLED;
+        SAVED_WIFI_CONFIGURATION_EXTERNAL.validatedInternetAccess = true;
     }
 
     private static ScanResult buildScanResult(String ssid) {
@@ -95,6 +93,7 @@ public class WifiWakeupControllerTest {
     @Mock private NotificationManager mNotificationManager;
     @Mock private ContentResolver mContentResolver;
     @Mock private WifiWakeupNetworkSelector mWifiWakeupNetworkSelector;
+    @Mock private WifiWakeupNotificationHelper mWifiWakeupNotificationHelper;
     @Mock private WifiManager mWifiManager;
     @Captor private ArgumentCaptor<BroadcastReceiver> mBroadcastReceiverCaptor;
 
@@ -114,16 +113,16 @@ public class WifiWakeupControllerTest {
                 Settings.Global.getInt(mContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
         Settings.Global.putInt(mContentResolver, Settings.Global.WIFI_WAKEUP_ENABLED, 1);
         Settings.Global.putInt(mContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
+        when(mWifiManager.getWifiApState()).thenReturn(WifiManager.WIFI_AP_STATE_DISABLED);
 
         mWifiWakeupController = new WifiWakeupController(mContext, mContentResolver,
-                Looper.getMainLooper(), mWifiManager, mWifiWakeupNetworkSelector);
+                Looper.getMainLooper(), mWifiManager, mWifiWakeupNetworkSelector,
+                mWifiWakeupNotificationHelper);
         mWifiWakeupController.start();
 
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 any(IntentFilter.class), anyString(), any(Handler.class));
         mBroadcastReceiver = mBroadcastReceiverCaptor.getValue();
-        TestUtil.sendWifiApStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_AP_STATE_DISABLED);
     }
 
     @After
@@ -161,13 +160,13 @@ public class WifiWakeupControllerTest {
                 Lists.newArrayList(SAVED_SCAN_RESULT));
         when(mWifiWakeupNetworkSelector.selectNetwork(anyMap(), anyList()))
                 .thenReturn(null, SAVED_WIFI_CONFIGURATION);
+        when(mWifiManager.getWifiState())
+                .thenReturn(WifiManager.WIFI_STATE_ENABLED, WifiManager.WIFI_STATE_DISABLED);
 
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_ENABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
@@ -177,6 +176,8 @@ public class WifiWakeupControllerTest {
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
 
         verify(mWifiManager).setWifiEnabled(true);
+        verify(mWifiWakeupNotificationHelper)
+                .maybeShowWifiEnabledNotification(SAVED_WIFI_CONFIGURATION);
     }
 
     /**
@@ -192,13 +193,13 @@ public class WifiWakeupControllerTest {
                 Lists.newArrayList(SAVED_SCAN_RESULT2));
         when(mWifiWakeupNetworkSelector.selectNetwork(anyMap(), anyList()))
                 .thenReturn(SAVED_WIFI_CONFIGURATION2);
+        when(mWifiManager.getWifiState())
+                .thenReturn(WifiManager.WIFI_STATE_ENABLED, WifiManager.WIFI_STATE_DISABLED);
 
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_ENABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
 
         verify(mWifiManager, never()).setWifiEnabled(true);
 
@@ -207,6 +208,8 @@ public class WifiWakeupControllerTest {
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
 
         verify(mWifiManager).setWifiEnabled(true);
+        verify(mWifiWakeupNotificationHelper)
+                .maybeShowWifiEnabledNotification(SAVED_WIFI_CONFIGURATION2);
     }
 
     /**
@@ -226,10 +229,10 @@ public class WifiWakeupControllerTest {
                 .thenReturn(Lists.newArrayList(SAVED_SCAN_RESULT_EXTERNAL));
         when(mWifiWakeupNetworkSelector.selectNetwork(anyMap(), anyList()))
                 .thenReturn(null, SAVED_WIFI_CONFIGURATION_EXTERNAL);
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_DISABLED);
 
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
 
         verify(mWifiManager, never()).setWifiEnabled(true);
@@ -237,6 +240,8 @@ public class WifiWakeupControllerTest {
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
 
         verify(mWifiManager).setWifiEnabled(true);
+        verify(mWifiWakeupNotificationHelper)
+                .maybeShowWifiEnabledNotification(SAVED_WIFI_CONFIGURATION_EXTERNAL);
     }
 
     /**
@@ -248,10 +253,10 @@ public class WifiWakeupControllerTest {
                 Lists.newArrayList(SAVED_WIFI_CONFIGURATION, SAVED_WIFI_CONFIGURATION_EXTERNAL));
         when(mWifiManager.getScanResults())
                 .thenReturn(Lists.newArrayList(SAVED_SCAN_RESULT));
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_ENABLED);
 
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_ENABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
 
         verifyZeroInteractions(mWifiWakeupNetworkSelector);
@@ -269,10 +274,10 @@ public class WifiWakeupControllerTest {
         when(mWifiManager.getScanResults())
                 .thenReturn(Lists.newArrayList(SAVED_SCAN_RESULT));
         when(mWifiWakeupNetworkSelector.selectNetwork(anyMap(), anyList())).thenReturn(null);
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_DISABLED);
 
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
 
         verify(mWifiManager, never()).setWifiEnabled(true);
@@ -289,11 +294,11 @@ public class WifiWakeupControllerTest {
                 Lists.newArrayList(SAVED_WIFI_CONFIGURATION, SAVED_WIFI_CONFIGURATION_EXTERNAL));
         when(mWifiManager.getScanResults())
                 .thenReturn(Lists.newArrayList(SAVED_SCAN_RESULT));
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_DISABLED);
 
         mWifiWakeupController.mContentObserver.onChange(true);
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
 
         verifyZeroInteractions(mWifiWakeupNetworkSelector);
@@ -311,11 +316,11 @@ public class WifiWakeupControllerTest {
                 Lists.newArrayList(SAVED_WIFI_CONFIGURATION, SAVED_WIFI_CONFIGURATION_EXTERNAL));
         when(mWifiManager.getScanResults())
                 .thenReturn(Lists.newArrayList(SAVED_SCAN_RESULT));
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_DISABLED);
 
         mWifiWakeupController.mContentObserver.onChange(true);
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
 
         verifyZeroInteractions(mWifiWakeupNetworkSelector);
@@ -332,13 +337,13 @@ public class WifiWakeupControllerTest {
                 Lists.newArrayList(SAVED_WIFI_CONFIGURATION, SAVED_WIFI_CONFIGURATION_EXTERNAL));
         when(mWifiManager.getScanResults())
                 .thenReturn(Lists.newArrayList(SAVED_SCAN_RESULT));
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_DISABLED);
+        when(mWifiManager.getWifiApState()).thenReturn(WifiManager.WIFI_AP_STATE_ENABLED);
 
         mWifiWakeupController.mContentObserver.onChange(true);
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
-        TestUtil.sendWifiApStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_AP_STATE_ENABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
+        TestUtil.sendWifiApStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
 
         verifyZeroInteractions(mWifiWakeupNetworkSelector);
@@ -356,12 +361,10 @@ public class WifiWakeupControllerTest {
         when(mWifiManager.getScanResults())
                 .thenReturn(Lists.newArrayList(SAVED_SCAN_RESULT));
 
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_ENABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
@@ -384,13 +387,13 @@ public class WifiWakeupControllerTest {
                 .thenReturn(Lists.<ScanResult>newArrayList())
                 .thenReturn(Lists.newArrayList(SAVED_SCAN_RESULT));
         when(mWifiWakeupNetworkSelector.selectNetwork(anyMap(), anyList())).thenReturn(null);
+        when(mWifiManager.getWifiState())
+                .thenReturn(WifiManager.WIFI_STATE_ENABLED, WifiManager.WIFI_STATE_DISABLED);
 
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_ENABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
@@ -410,13 +413,13 @@ public class WifiWakeupControllerTest {
                 Lists.newArrayList(SAVED_SCAN_RESULT,
                         SAVED_SCAN_RESULT2),
                 Lists.newArrayList(SAVED_SCAN_RESULT));
+        when(mWifiManager.getWifiState())
+                .thenReturn(WifiManager.WIFI_STATE_ENABLED, WifiManager.WIFI_STATE_DISABLED);
 
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_ENABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendConfiguredNetworksChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext,
-                WifiManager.WIFI_STATE_DISABLED);
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);
         TestUtil.sendScanResultsAvailable(mBroadcastReceiver, mContext);

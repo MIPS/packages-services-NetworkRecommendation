@@ -55,6 +55,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class WifiWakeupController {
     private static final String TAG = "WifiWakeupController";
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
+    private static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
     /** Number of scans to ensure that a previously in range AP is now out of range. */
     private static final int NUM_SCANS_TO_CONFIRM_AP_LOSS = 3;
@@ -64,6 +65,7 @@ public class WifiWakeupController {
     private final WifiManager mWifiManager;
     private final WifiWakeupNetworkSelector mWifiWakeupNetworkSelector;
     private final Handler mHandler;
+    private final WifiWakeupNotificationHelper mWifiWakeupNotificationHelper;
     private final AtomicBoolean mStarted;
     @VisibleForTesting final ContentObserver mContentObserver;
 
@@ -77,10 +79,12 @@ public class WifiWakeupController {
     private boolean mAirplaneModeEnabled;
 
     WifiWakeupController(Context context, ContentResolver contentResolver, Looper looper,
-            WifiManager wifiManager, WifiWakeupNetworkSelector wifiWakeupNetworkSelector) {
+            WifiManager wifiManager, WifiWakeupNetworkSelector wifiWakeupNetworkSelector,
+            WifiWakeupNotificationHelper wifiWakeupNotificationHelper) {
         mContext = context;
         mContentResolver = contentResolver;
         mHandler = new Handler(looper);
+        mWifiWakeupNotificationHelper = wifiWakeupNotificationHelper;
         mStarted = new AtomicBoolean(false);
         mWifiManager = wifiManager;
         mWifiWakeupNetworkSelector = wifiWakeupNetworkSelector;
@@ -103,9 +107,9 @@ public class WifiWakeupController {
             }
 
             if (WifiManager.WIFI_AP_STATE_CHANGED_ACTION.equals(intent.getAction())) {
-                handleWifiApStateChanged(intent);
+                handleWifiApStateChanged();
             } else if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(intent.getAction())) {
-                handleWifiStateChanged(intent);
+                handleWifiStateChanged();
             } else if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(intent.getAction())) {
                 handleScanResultsAvailable();
             } else if (WifiManager.CONFIGURED_NETWORKS_CHANGED_ACTION.equals(intent.getAction())) {
@@ -119,6 +123,9 @@ public class WifiWakeupController {
         if (!mStarted.compareAndSet(false, true)) {
             return;
         }
+        if (DEBUG) {
+            Log.d(TAG, "Starting WifiWakeupController.");
+        }
         IntentFilter filter = new IntentFilter();
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
@@ -131,7 +138,10 @@ public class WifiWakeupController {
         mContentResolver.registerContentObserver(Settings.Global.getUriFor(
                 Settings.Global.AIRPLANE_MODE_ON), true, mContentObserver);
         mContentObserver.onChange(true);
+        handleWifiStateChanged();
+        handleWifiApStateChanged();
         handleConfiguredNetworksChanged();
+        handleScanResultsAvailable();
     }
 
     /** Stops {@link WifiWakeupController}. */
@@ -139,13 +149,18 @@ public class WifiWakeupController {
         if (!mStarted.compareAndSet(true, false)) {
             return;
         }
+        if (DEBUG) {
+            Log.d(TAG, "Stopping WifiWakeupController.");
+        }
         mContext.unregisterReceiver(mBroadcastReceiver);
         mContentResolver.unregisterContentObserver(mContentObserver);
     }
 
-    private void handleWifiApStateChanged(Intent intent) {
-        mWifiApState = intent.getIntExtra(WifiManager.EXTRA_WIFI_AP_STATE,
-                WifiManager.WIFI_AP_STATE_DISABLED);
+    private void handleWifiApStateChanged() {
+        mWifiApState = mWifiManager.getWifiApState();
+        if (VERBOSE) {
+            Log.v(TAG, "handleWifiApStateChanged: " + mWifiApState);
+        }
     }
 
     private void handleConfiguredNetworksChanged() {
@@ -153,14 +168,20 @@ public class WifiWakeupController {
         if (wifiConfigurations == null) {
             return;
         }
+        if (VERBOSE) {
+            Log.v(TAG, "handleConfiguredNetworksChanged: " + wifiConfigurations.size());
+        }
 
         mSavedNetworks.clear();
         mSavedSsids.clear();
         for (int i = 0; i < wifiConfigurations.size(); i++) {
             WifiConfiguration wifiConfiguration = wifiConfigurations.get(i);
             if (wifiConfiguration.status != WifiConfiguration.Status.ENABLED
-                    || wifiConfiguration.useExternalScores) {
-                continue; // Ignore disabled and externally scored networks.
+                    && wifiConfiguration.status != WifiConfiguration.Status.CURRENT) {
+                continue; // Ignore networks that are not connected or enabled.
+            }
+            if (wifiConfiguration.useExternalScores) {
+                continue; // Ignore externally scored networks.
             }
             if (wifiConfiguration.hasNoInternetAccess()
                     || wifiConfiguration.isNoInternetAccessExpected()) {
@@ -176,8 +197,11 @@ public class WifiWakeupController {
         mSavedSsidsInLastScan.retainAll(mSavedSsids);
     }
 
-    private void handleWifiStateChanged(Intent intent) {
-        mWifiState = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, -1);
+    private void handleWifiStateChanged() {
+        mWifiState = mWifiManager.getWifiState();
+        if (VERBOSE) {
+            Log.v(TAG, "handleWifiStateChanged: " + mWifiState);
+        }
         switch (mWifiState) {
             case WifiManager.WIFI_STATE_ENABLED:
                 mSavedSsidsOnDisable.clear();
@@ -192,6 +216,13 @@ public class WifiWakeupController {
 
     private void handleScanResultsAvailable() {
         List<ScanResult> scanResults = mWifiManager.getScanResults();
+        if (scanResults == null) {
+            return;
+        }
+        if (VERBOSE) {
+            Log.v(TAG, "handleScanResultsAvailable: " + scanResults.size());
+        }
+
         mSavedSsidsInLastScan.clear();
         for (int i = 0; i < scanResults.size(); i++) {
             String ssid = scanResults.get(i).SSID;
@@ -230,11 +261,11 @@ public class WifiWakeupController {
         WifiConfiguration selectedNetwork = mWifiWakeupNetworkSelector.selectNetwork(mSavedNetworks,
                 scanResults);
         if (selectedNetwork != null) {
-            // TODO(b/33677088): show notification for wifi enablement
             if (DEBUG) {
                 Log.d(TAG, "Enabling wifi for ssid: " + selectedNetwork.SSID);
             }
             mWifiManager.setWifiEnabled(true /* enabled */);
+            mWifiWakeupNotificationHelper.maybeShowWifiEnabledNotification(selectedNetwork);
         }
     }
 

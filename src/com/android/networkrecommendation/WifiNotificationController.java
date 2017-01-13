@@ -200,8 +200,7 @@ public class WifiNotificationController {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(WifiManager.WIFI_STATE_CHANGED_ACTION)) {
-                mWifiState = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE,
-                        WifiManager.WIFI_STATE_UNKNOWN);
+                mWifiState = mWifiManager.getWifiState();
                 resetNotification();
             } else if (intent.getAction().equals(
                     WifiManager.NETWORK_STATE_CHANGED_ACTION)) {

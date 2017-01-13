@@ -146,7 +146,9 @@ public class WifiNotificationControllerTest {
     /** Verifies that a notification is displayed (and retracted) given system events. */
     @Test
     public void verifyNotificationDisplayedWhenNetworkRecommended() throws Exception {
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext, WifiManager.WIFI_STATE_ENABLED);
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_ENABLED);
+
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
                 NetworkInfo.DetailedState.DISCONNECTED);
         setOpenAccessPoints(3);
@@ -182,7 +184,9 @@ public class WifiNotificationControllerTest {
     /** Verifies that a notification is not displayed for bad networks. */
     @Test
     public void verifyNotificationNotDisplayedWhenNoNetworkRecommended() throws Exception {
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext, WifiManager.WIFI_STATE_ENABLED);
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_ENABLED);
+
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
                 NetworkInfo.DetailedState.DISCONNECTED);
         setOpenAccessPoints(3);
@@ -213,7 +217,9 @@ public class WifiNotificationControllerTest {
      */
     @Test
     public void verifyNotificationsFlowOnConnectToNetwork() {
-        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext, WifiManager.WIFI_STATE_ENABLED);
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_ENABLED);
+
+        TestUtil.sendWifiStateChanged(mBroadcastReceiver, mContext);
         TestUtil.sendNetworkStateChanged(mBroadcastReceiver, mContext,
                 NetworkInfo.DetailedState.DISCONNECTED);
         setOpenAccessPoints(3);

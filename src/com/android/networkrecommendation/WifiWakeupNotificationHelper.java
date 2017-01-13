@@ -133,8 +133,7 @@ public class WifiWakeupNotificationHelper {
         String summary = mResources.getString(
                 R.string.wifi_wakeup_enabled_notification_context, wifiConfiguration.SSID);
         PendingIntent savedNetworkSettingsPendingIntent = PendingIntent.getActivity(mContext, 0,
-                // TODO(b/34135303): update action
-                new Intent(Settings.ACTION_WIFI_SETTINGS),
+                new Intent(Settings.ACTION_CONFIGURE_WIFI_SETTINGS),
                 PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent deletePendingIntent = PendingIntent.getActivity(mContext, 0,
                 new Intent(ACTION_DISMISS_WIFI_ENABLED_NOTIFICATION),

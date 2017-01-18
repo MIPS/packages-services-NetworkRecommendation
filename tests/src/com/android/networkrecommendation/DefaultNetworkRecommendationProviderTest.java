@@ -22,7 +22,6 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import android.net.NetworkCapabilities;
 import android.net.NetworkKey;
 import android.net.NetworkRecommendationProvider;
 import android.net.NetworkScoreManager;
@@ -175,8 +174,6 @@ public class DefaultNetworkRecommendationProviderTest {
 
         RecommendationRequest request = new RecommendationRequest.Builder()
                 .setScanResults(scanResults)
-                .setNetworkCapabilities(new NetworkCapabilities().removeCapability(
-                        NetworkCapabilities.NET_CAPABILITY_TRUSTED))
                 .build();
 
         RecommendationResult result = verifyAndCaptureResult(request);
@@ -193,9 +190,7 @@ public class DefaultNetworkRecommendationProviderTest {
         expectedConfig.BSSID = "bssid";
         RecommendationRequest request = new RecommendationRequest.Builder()
                 .setScanResults(scanResults)
-                .setNetworkCapabilities(new NetworkCapabilities().removeCapability(
-                        NetworkCapabilities.NET_CAPABILITY_TRUSTED))
-                .setCurrentRecommendedWifiConfig(expectedConfig)
+                .setDefaultWifiConfig(expectedConfig)
                 .build();
 
         RecommendationResult result = verifyAndCaptureResult(request);
@@ -208,8 +203,6 @@ public class DefaultNetworkRecommendationProviderTest {
 
         RecommendationRequest request = new RecommendationRequest.Builder()
                 .setScanResults(scanResults)
-                .setNetworkCapabilities(new NetworkCapabilities().removeCapability(
-                        NetworkCapabilities.NET_CAPABILITY_TRUSTED))
                 .build();
 
         RecommendationResult result = verifyAndCaptureResult(request);

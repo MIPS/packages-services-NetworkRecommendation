@@ -21,7 +21,6 @@ import static org.junit.Assert.fail;
 
 import android.content.Intent;
 import android.net.INetworkRecommendationProvider;
-import android.net.NetworkCapabilities;
 import android.net.NetworkKey;
 import android.net.NetworkRecommendationProvider;
 import android.net.NetworkScoreManager;
@@ -106,8 +105,6 @@ public class DefaultNetworkRecommendationServiceTest {
 
         RecommendationRequest request = new RecommendationRequest.Builder()
                 .setScanResults(scanResults)
-                .setNetworkCapabilities(new NetworkCapabilities().removeCapability(
-                        NetworkCapabilities.NET_CAPABILITY_TRUSTED))
                 .build();
 
         Result result = requestRecommendation(service, request, SEQUENCE_ID);

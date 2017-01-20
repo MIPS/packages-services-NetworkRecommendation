@@ -199,9 +199,9 @@ public class DefaultNetworkRecommendationProvider
         // empty recommendation.
         RecommendationResult recommendationResult;
         if (recommendedScanResult == null) {
-            if (request.getCurrentSelectedConfig() != null) {
+            if (request.getDefaultWifiConfig() != null) {
                 recommendationResult = RecommendationResult
-                        .createConnectRecommendation(request.getCurrentSelectedConfig());
+                        .createConnectRecommendation(request.getDefaultWifiConfig());
             } else {
                 recommendationResult = RecommendationResult.createDoNotConnectRecommendation();
             }

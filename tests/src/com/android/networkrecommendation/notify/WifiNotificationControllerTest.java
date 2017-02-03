@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.notify;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyString;
@@ -47,6 +47,9 @@ import android.provider.Settings;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
+import com.android.networkrecommendation.SynchronousNetworkRecommendationProvider;
+import com.android.networkrecommendation.TestUtil;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +62,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Unit tests for {@link com.android.networkrecommendation.WifiNotificationController}.
+ * Unit tests for {@link WifiNotificationController}.
  */
 @RunWith(AndroidJUnit4.class)
 public class WifiNotificationControllerTest {

@@ -46,18 +46,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @RunWith(AndroidJUnit4.class)
-public class DefaultNetworkRecommendationServiceTest {
+public class NetworkRecommendationServiceTest {
 
     private static final int RESULT_LATCH_TIMEOUT_MILLIS = 2000;
     private static final int WAIT_FOR_BIND_TIMEOUT_MILLIS = 2000;
     private static final int SEQUENCE_ID = 11;
 
     @Rule
-    public final ServiceTestRule mServiceRule = new ServiceTestRule();
+    public final ServiceTestRule serviceRule = new ServiceTestRule();
 
     private INetworkRecommendationProvider bind() throws TimeoutException {
         Intent bindIntent = new Intent(InstrumentationRegistry.getTargetContext(),
-                DefaultNetworkRecommendationService.class);
+                NetworkRecommendationService.class);
         bindIntent.setAction(NetworkScoreManager.ACTION_RECOMMEND_NETWORKS);
 
         // https://code.google.com/p/android/issues/detail?id=200071
@@ -68,7 +68,7 @@ public class DefaultNetworkRecommendationServiceTest {
             long startTime = SystemClock.elapsedRealtime();
             long currentTime = startTime;
             while (currentTime < startTime + WAIT_FOR_BIND_TIMEOUT_MILLIS) {
-                binder = mServiceRule.bindService(bindIntent);
+                binder = serviceRule.bindService(bindIntent);
                 if (binder != null) {
                     return INetworkRecommendationProvider.Stub.asInterface(binder);
                 }
@@ -164,7 +164,7 @@ public class DefaultNetworkRecommendationServiceTest {
     }
 
     private static class Result {
-        int sequence;
-        RecommendationResult recommendation;
+        public int sequence;
+        public RecommendationResult recommendation;
     }
 }

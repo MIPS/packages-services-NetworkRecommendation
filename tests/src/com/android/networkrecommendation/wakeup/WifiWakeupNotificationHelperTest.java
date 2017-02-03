@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.wakeup;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

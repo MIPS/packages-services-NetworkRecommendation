@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.notify;
 
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
 
@@ -39,6 +39,11 @@ import android.support.annotation.NonNull;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
+
+import com.android.networkrecommendation.R;
+import com.android.networkrecommendation.SynchronousNetworkRecommendationProvider;
+import com.android.networkrecommendation.util.ImageUtils;
+import com.android.networkrecommendation.util.WifiConfigurationUtil;
 
 import java.util.List;
 

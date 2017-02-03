@@ -31,7 +31,7 @@
                  android:directBootAware="true">
 
         <!-- Only the platform can bind to this service -->
-        <service android:name=".DefaultNetworkRecommendationService"
+        <service android:name=".NetworkRecommendationService"
                  android:permission="android.permission.BIND_NETWORK_RECOMMENDATION_SERVICE">
             <intent-filter>
                 <action android:name="android.net.action.RECOMMEND_NETWORKS" />

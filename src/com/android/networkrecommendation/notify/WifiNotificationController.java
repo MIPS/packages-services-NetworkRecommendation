@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.notify;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -36,6 +36,9 @@ import android.os.Handler;
 import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
+
+import com.android.networkrecommendation.R;
+import com.android.networkrecommendation.SynchronousNetworkRecommendationProvider;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -147,7 +150,8 @@ public class WifiNotificationController {
     private NetworkInfo.DetailedState mDetailedState;
     private volatile int mWifiState;
 
-    WifiNotificationController(Context context, ContentResolver contentResolver, Handler handler,
+    public WifiNotificationController(Context context, ContentResolver contentResolver,
+            Handler handler,
             SynchronousNetworkRecommendationProvider networkRecommendationProvider,
             WifiManager wifiManager, NotificationManager notificationManager,
             WifiNotificationHelper helper) {
@@ -417,7 +421,8 @@ public class WifiNotificationController {
         mNotificationShown = false;
     }
 
-    void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+    /** Dump debugging information. */
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("mNotificationEnabled " + mNotificationEnabled);
         pw.println("mNotificationRepeatTime " + mNotificationRepeatTime);
         pw.println("mNotificationShown " + mNotificationShown);

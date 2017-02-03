@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.wakeup;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -35,6 +35,8 @@ import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.Log;
+
+import com.android.networkrecommendation.R;
 
 import java.util.Set;
 import java.util.concurrent.TimeUnit;

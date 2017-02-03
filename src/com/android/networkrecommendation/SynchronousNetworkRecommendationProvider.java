@@ -24,7 +24,7 @@ import android.net.ScoredNetwork;
 /**
  * Provider to return {@link ScoredNetwork} from cached scores in NetworkRecommendationProvider.
  */
-interface SynchronousNetworkRecommendationProvider {
+public interface SynchronousNetworkRecommendationProvider {
 
     /** Returns a {@link ScoredNetwork} if present in the cache. Otherwise, return null. */
     ScoredNetwork getCachedScoredNetwork(NetworkKey networkKey);

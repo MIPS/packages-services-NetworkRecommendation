@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.util;
 
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;

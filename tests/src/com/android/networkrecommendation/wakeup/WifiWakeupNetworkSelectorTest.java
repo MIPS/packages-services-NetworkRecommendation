@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.wakeup;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -26,6 +26,8 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiSsid;
 import android.support.test.runner.AndroidJUnit4;
 import android.util.ArrayMap;
+
+import com.android.networkrecommendation.R;
 
 import com.google.android.collect.Lists;
 

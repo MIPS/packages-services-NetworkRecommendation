@@ -28,13 +28,19 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 
+import com.android.networkrecommendation.notify.WifiNotificationController;
+import com.android.networkrecommendation.notify.WifiNotificationHelper;
+import com.android.networkrecommendation.wakeup.WifiWakeupController;
+import com.android.networkrecommendation.wakeup.WifiWakeupNetworkSelector;
+import com.android.networkrecommendation.wakeup.WifiWakeupNotificationHelper;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
 /**
  * Provides network recommendations for the platform.
  */
-public class DefaultNetworkRecommendationService extends Service {
+public class NetworkRecommendationService extends Service {
 
     private HandlerThread mHandlerThread;
     private Handler mHandler;

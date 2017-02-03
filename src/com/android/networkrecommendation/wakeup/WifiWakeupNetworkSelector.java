@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.wakeup;
 
 import android.content.res.Resources;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
+
+import com.android.networkrecommendation.R;
+import com.android.networkrecommendation.util.ScanResultUtil;
+import com.android.networkrecommendation.util.WifiConfigurationUtil;
 
 import java.util.List;
 import java.util.Map;

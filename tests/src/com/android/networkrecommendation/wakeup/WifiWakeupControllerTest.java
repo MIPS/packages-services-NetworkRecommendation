@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.wakeup;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyList;
@@ -38,6 +38,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.support.test.runner.AndroidJUnit4;
+
+import com.android.networkrecommendation.TestUtil;
 
 import com.google.android.collect.Lists;
 

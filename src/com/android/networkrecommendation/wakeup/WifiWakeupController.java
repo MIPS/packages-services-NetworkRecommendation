@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.networkrecommendation;
+package com.android.networkrecommendation.wakeup;
 
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -33,6 +33,8 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Log;
+
+import com.android.networkrecommendation.util.WifiConfigurationUtil;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -78,7 +80,7 @@ public class WifiWakeupController {
     private boolean mWifiWakeupEnabled;
     private boolean mAirplaneModeEnabled;
 
-    WifiWakeupController(Context context, ContentResolver contentResolver, Looper looper,
+    public WifiWakeupController(Context context, ContentResolver contentResolver, Looper looper,
             WifiManager wifiManager, WifiWakeupNetworkSelector wifiWakeupNetworkSelector,
             WifiWakeupNotificationHelper wifiWakeupNotificationHelper) {
         mContext = context;
@@ -269,7 +271,8 @@ public class WifiWakeupController {
         }
     }
 
-    void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+    /** Dump debugging information. */
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("mStarted " + mStarted.get());
         pw.println("mWifiWakeupEnabled: " + mWifiWakeupEnabled);
         pw.println("mSavedSsids: " + mSavedSsids);

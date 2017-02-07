@@ -22,7 +22,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 
 /** Helper for image manipulation */
-public class ImageUtils {
+public class ImageUtil {
 
     /**
      * Convert a drawable to a bitmap, scaled to fit within maxWidth and maxHeight.

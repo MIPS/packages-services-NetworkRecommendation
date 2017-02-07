@@ -31,8 +31,8 @@ import android.os.Handler;
 import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
 import android.util.ArrayMap;
-import android.util.Log;
 
+import com.android.networkrecommendation.util.Blog;
 import com.android.networkrecommendation.util.ScanResultUtil;
 
 import java.io.FileDescriptor;
@@ -87,8 +87,6 @@ import javax.annotation.concurrent.GuardedBy;
 public class DefaultNetworkRecommendationProvider
         extends NetworkRecommendationProvider implements SynchronousNetworkRecommendationProvider {
     static final String TAG = "DefaultNetRecProvider";
-    static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
-    static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
     private static final String WILDCARD_MAC = "00:00:00:00:00:00";
 
@@ -161,39 +159,39 @@ public class DefaultNetworkRecommendationProvider
         if (results != null) {
             for (int i = 0; i < results.length; i++) {
                 final ScanResult scanResult = results[i];
-                if (VERBOSE) Log.v(TAG, "Scan: " + scanResult + " " + i);
+                Blog.v(TAG, "Scan: " + scanResult + " " + i);
 
                 // We only want to recommend open networks. This check is taken from
                 // places like WifiNotificationController and will be extracted to ScanResult in
                 // a future CL.
                 if (!"[ESS]".equals(scanResult.capabilities)) {
-                    if (VERBOSE) Log.v(TAG, "Discarding closed network: " + scanResult);
+                    Blog.v(TAG, "Discarding closed network: " + scanResult);
                     continue;
                 }
 
                 final NetworkKey networkKey = new NetworkKey(
                         new WifiKey(ScanResultUtil.createQuotedSSID(scanResult.SSID),
                                 scanResult.BSSID));
-                if (VERBOSE) Log.v(TAG, "Evaluating network: " + networkKey);
+                Blog.v(TAG, "Evaluating network: " + networkKey);
 
                 // We will only score networks we know about.
                 final ScoredNetwork network = mStorage.get(networkKey);
                 if (network == null) {
-                    if (VERBOSE) Log.v(TAG, "Discarding unscored network: " + scanResult);
+                    Blog.v(TAG, "Discarding unscored network: " + scanResult);
                     continue;
                 }
 
                 final int score = network.rssiCurve.lookupScore(scanResult.level);
-                if (VERBOSE) Log.d(TAG, "Scored " + scanResult + ": " + score);
+                Blog.v(TAG, "Scored " + scanResult + ": " + score);
                 if (score > recommendedScore) {
                     recommendedScanResult = scanResult;
                     recommendedScore = score;
-                    if (VERBOSE) Log.d(TAG, "New recommended network: " + scanResult);
+                    Blog.v(TAG, "New recommended network: " + scanResult);
                     continue;
                 }
             }
         } else {
-            Log.w(TAG, "Received null scan results in request.");
+            Blog.w(TAG, "Received null scan results in request.");
         }
 
         // If we ended up without a recommendation, recommend the provided configuration
@@ -219,7 +217,7 @@ public class DefaultNetworkRecommendationProvider
         synchronized (mStatsLock) {
             mLastRecommended = recommendationResult.getWifiConfiguration();
             mRecommendationCounter++;
-            if (DEBUG) Log.d(TAG, "Recommending network: " + configToString(mLastRecommended));
+            Blog.d(TAG, "Recommending network: " + configToString(mLastRecommended));
         }
         return recommendationResult;
     }
@@ -256,7 +254,7 @@ public class DefaultNetworkRecommendationProvider
             return;
         }
 
-        if (DEBUG) Log.d(TAG, "Scored networks: " + scoredNetworks);
+        Blog.d(TAG, "Scored networks: " + scoredNetworks);
         safelyUpdateScores(scoredNetworks.toArray(new ScoredNetwork[scoredNetworks.size()]));
     }
 
@@ -305,7 +303,7 @@ public class DefaultNetworkRecommendationProvider
         try {
             mScoreManager.updateScores(networkScores);
         } catch (SecurityException e) {
-            Log.w(TAG, "Tried to update scores when not the active scorer.");
+            Blog.w(TAG, "Tried to update scores when not the active scorer.");
         }
     }
 
@@ -315,7 +313,7 @@ public class DefaultNetworkRecommendationProvider
         try {
             mScoreManager.clearScores();
         } catch (SecurityException e) {
-            Log.w(TAG, "Tried to update scores when not the active scorer.");
+            Blog.w(TAG, "Tried to update scores when not the active scorer.");
         }
     }
 
@@ -382,7 +380,7 @@ public class DefaultNetworkRecommendationProvider
          *     score as applying to any bssid with the provided ssid.
          */
         public void addScore(ScoredNetwork scoredNetwork) {
-            if (DEBUG) Log.d(TAG, "addScore: " + scoredNetwork);
+            Blog.d(TAG, "addScore: " + scoredNetwork);
             synchronized (mScores) {
                 mScores.put(scoredNetwork.networkKey, scoredNetwork);
             }
@@ -429,5 +427,4 @@ public class DefaultNetworkRecommendationProvider
     public ScoredNetwork getCachedScoredNetwork(NetworkKey networkKey) {
         return mStorage.get(networkKey);
     }
-
 }

@@ -42,7 +42,7 @@ import android.text.style.ForegroundColorSpan;
 
 import com.android.networkrecommendation.R;
 import com.android.networkrecommendation.SynchronousNetworkRecommendationProvider;
-import com.android.networkrecommendation.util.ImageUtils;
+import com.android.networkrecommendation.util.ImageUtil;
 import com.android.networkrecommendation.util.WifiConfigurationUtil;
 
 import java.util.List;
@@ -130,7 +130,7 @@ public class WifiNotificationHelper {
         Resources resources = mContext.getResources();
         Drawable iconDrawable = mContext.getDrawable(R.drawable.ic_signal_wifi_no_network);
         iconDrawable.setTint(mContext.getColor(R.color.color_tint));
-        Bitmap icon = ImageUtils.buildScaledBitmap(
+        Bitmap icon = ImageUtil.buildScaledBitmap(
                 iconDrawable,
                 resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_width),
                 resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_height));
@@ -221,7 +221,7 @@ public class WifiNotificationHelper {
                 mContext.getDrawable(getWifiBadgeResourceForEnum(badgeEnum))});
         layerDrawable.setTint(mContext.getColor(R.color.color_tint));
         Resources resources = mContext.getResources();
-        return ImageUtils.buildScaledBitmap(layerDrawable,
+        return ImageUtil.buildScaledBitmap(layerDrawable,
                 resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_width),
                 resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_height));
     }

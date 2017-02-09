@@ -34,9 +34,9 @@ import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
 import android.util.ArraySet;
-import android.util.Log;
 
 import com.android.networkrecommendation.R;
+import com.android.networkrecommendation.util.Blog;
 
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -46,7 +46,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class WifiWakeupNotificationHelper {
     private static final String TAG = "WifiWakeupNotifHelper";
-    private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
 
     /** Unique ID used for the Wi-Fi Enabled notification. */
     private static final int NOTIFICATION_ID = R.string.wifi_wakeup_enabled_notification_title;
@@ -121,10 +120,8 @@ public class WifiWakeupNotificationHelper {
         if (ssidSet == null) {
             ssidSet = new ArraySet<>();
         } else if (ssidSet.contains(wifiConfiguration.SSID)) {
-            if (DEBUG) {
-                Log.d(TAG, "Already showed Wi-Fi Enabled notification for ssid: "
-                        + wifiConfiguration.SSID);
-            }
+            Blog.d(TAG, "Already showed Wi-Fi Enabled notification for ssid: "
+                    + wifiConfiguration.SSID);
             return;
         }
         ssidSet.add(wifiConfiguration.SSID);

@@ -32,8 +32,8 @@ import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
-import android.util.Log;
 
+import com.android.networkrecommendation.util.Blog;
 import com.android.networkrecommendation.util.WifiConfigurationUtil;
 
 import java.io.FileDescriptor;
@@ -56,8 +56,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class WifiWakeupController {
     private static final String TAG = "WifiWakeupController";
-    private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
-    private static final boolean VERBOSE = Log.isLoggable(TAG, Log.VERBOSE);
 
     /** Number of scans to ensure that a previously in range AP is now out of range. */
     private static final int NUM_SCANS_TO_CONFIRM_AP_LOSS = 3;
@@ -125,9 +123,7 @@ public class WifiWakeupController {
         if (!mStarted.compareAndSet(false, true)) {
             return;
         }
-        if (DEBUG) {
-            Log.d(TAG, "Starting WifiWakeupController.");
-        }
+        Blog.d(TAG, "Starting WifiWakeupController.");
         IntentFilter filter = new IntentFilter();
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
@@ -151,18 +147,14 @@ public class WifiWakeupController {
         if (!mStarted.compareAndSet(true, false)) {
             return;
         }
-        if (DEBUG) {
-            Log.d(TAG, "Stopping WifiWakeupController.");
-        }
+        Blog.d(TAG, "Stopping WifiWakeupController.");
         mContext.unregisterReceiver(mBroadcastReceiver);
         mContentResolver.unregisterContentObserver(mContentObserver);
     }
 
     private void handleWifiApStateChanged() {
         mWifiApState = mWifiManager.getWifiApState();
-        if (VERBOSE) {
-            Log.v(TAG, "handleWifiApStateChanged: " + mWifiApState);
-        }
+        Blog.v(TAG, "handleWifiApStateChanged: " + mWifiApState);
     }
 
     private void handleConfiguredNetworksChanged() {
@@ -170,9 +162,7 @@ public class WifiWakeupController {
         if (wifiConfigurations == null) {
             return;
         }
-        if (VERBOSE) {
-            Log.v(TAG, "handleConfiguredNetworksChanged: " + wifiConfigurations.size());
-        }
+        Blog.v(TAG, "handleConfiguredNetworksChanged: " + wifiConfigurations.size());
 
         mSavedNetworks.clear();
         mSavedSsids.clear();
@@ -201,9 +191,7 @@ public class WifiWakeupController {
 
     private void handleWifiStateChanged() {
         mWifiState = mWifiManager.getWifiState();
-        if (VERBOSE) {
-            Log.v(TAG, "handleWifiStateChanged: " + mWifiState);
-        }
+        Blog.v(TAG, "handleWifiStateChanged: " + mWifiState);
         switch (mWifiState) {
             case WifiManager.WIFI_STATE_ENABLED:
                 mSavedSsidsOnDisable.clear();
@@ -221,9 +209,7 @@ public class WifiWakeupController {
         if (scanResults == null) {
             return;
         }
-        if (VERBOSE) {
-            Log.v(TAG, "handleScanResultsAvailable: " + scanResults.size());
-        }
+        Blog.v(TAG, "handleScanResultsAvailable: " + scanResults.size());
 
         mSavedSsidsInLastScan.clear();
         for (int i = 0; i < scanResults.size(); i++) {
@@ -253,19 +239,15 @@ public class WifiWakeupController {
         }
 
         if (!mSavedSsidsOnDisable.isEmpty()) {
-            if (DEBUG) {
-                Log.d(TAG, "Latest scan result contains ssids from the disabled set: "
-                        + mSavedSsidsOnDisable);
-            }
+            Blog.d(TAG, "Latest scan result contains ssids from the disabled set: "
+                    + mSavedSsidsOnDisable);
             return;
         }
 
         WifiConfiguration selectedNetwork = mWifiWakeupNetworkSelector.selectNetwork(mSavedNetworks,
                 scanResults);
         if (selectedNetwork != null) {
-            if (DEBUG) {
-                Log.d(TAG, "Enabling wifi for ssid: " + selectedNetwork.SSID);
-            }
+            Blog.d(TAG, "Enabling wifi for ssid: " + selectedNetwork.SSID);
             mWifiManager.setWifiEnabled(true /* enabled */);
             mWifiWakeupNotificationHelper.maybeShowWifiEnabledNotification(selectedNetwork);
         }

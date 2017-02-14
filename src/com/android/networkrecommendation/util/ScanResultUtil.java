@@ -18,7 +18,6 @@ package com.android.networkrecommendation.util;
 
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
-import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
 
 /**
@@ -61,15 +60,6 @@ public class ScanResultUtil {
                 || isScanResultForEapNetwork(scanResult));
     }
 
-    /**
-     * Helper method to quote the SSID in Scan result to use for comparing/filling SSID stored in
-     * WifiConfiguration object.
-     */
-    @VisibleForTesting
-    public static String createQuotedSSID(String ssid) {
-        return "\"" + ssid + "\"";
-    }
-
     /** @return {@code true} if the result is for a 2.4GHz network. */
     public static boolean is24GHz(ScanResult result) {
         return is24GHz(result.frequency);
@@ -97,7 +87,7 @@ public class ScanResultUtil {
     public static boolean doesScanResultMatchWithNetwork(
             ScanResult scanResult, WifiConfiguration config) {
         // Add the double quotes to the scan result SSID for comparison with the network configs.
-        String configSSID = createQuotedSSID(scanResult.SSID);
+        String configSSID = SsidUtil.quoteSsid(scanResult.SSID);
         if (TextUtils.equals(config.SSID, configSSID)) {
             if (ScanResultUtil.isScanResultForPskNetwork(scanResult)
                     && WifiConfigurationUtil.isConfigForPskNetwork(config)) {

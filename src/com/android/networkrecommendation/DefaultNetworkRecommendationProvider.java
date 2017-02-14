@@ -33,7 +33,7 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 
 import com.android.networkrecommendation.util.Blog;
-import com.android.networkrecommendation.util.ScanResultUtil;
+import com.android.networkrecommendation.util.SsidUtil;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -170,7 +170,7 @@ public class DefaultNetworkRecommendationProvider
                 }
 
                 final NetworkKey networkKey = new NetworkKey(
-                        new WifiKey(ScanResultUtil.createQuotedSSID(scanResult.SSID),
+                        new WifiKey(SsidUtil.quoteSsid(scanResult.SSID),
                                 scanResult.BSSID));
                 Blog.v(TAG, "Evaluating network: " + networkKey);
 
@@ -208,7 +208,7 @@ public class DefaultNetworkRecommendationProvider
         } else {
             // Build a configuration based on the scan.
             WifiConfiguration recommendedConfig = new WifiConfiguration();
-            recommendedConfig.SSID = ScanResultUtil.createQuotedSSID(recommendedScanResult.SSID);
+            recommendedConfig.SSID = SsidUtil.quoteSsid(recommendedScanResult.SSID);
             recommendedConfig.BSSID = recommendedScanResult.BSSID;
             recommendedConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
             recommendationResult = RecommendationResult

@@ -18,32 +18,32 @@ package com.android.networkrecommendation;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
-import android.app.job.JobInfo;
+import static org.mockito.Mockito.verify;
+
 import android.app.job.JobScheduler;
 import android.content.Context;
 import android.content.Intent;
+import android.net.RecommendationRequest;
+
+import com.android.networkrecommendation.shadows.RecommendationRequestShadow;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
-import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(manifest="packages/services/NetworkRecommendation/AndroidManifest.xml", sdk=23)
+@Config(manifest="packages/services/NetworkRecommendation/AndroidManifest.xml", sdk=23,
+    shadows={RecommendationRequestShadow.class})
 public class ExampleTest {
     @Mock private Context mMockContext;
     @Mock private JobScheduler mJobScheduler;
     @Mock private Intent mMockIntent;
+    @Mock private RecommendationRequest request;
 
     @Before
     public void setUp() {
@@ -51,7 +51,17 @@ public class ExampleTest {
     }
 
     @Test
-    public void example() {
-      // pass
+    public void buildRecommendation() {
+      new RecommendationRequest.Builder().build();
+    }
+
+    @Test
+    public void build() {
+        new Example().buildRecommendationRequest();
+    }
+
+    @Test
+    public void reflect() {
+        new Example().reflectRecommendationRequest();
     }
 }

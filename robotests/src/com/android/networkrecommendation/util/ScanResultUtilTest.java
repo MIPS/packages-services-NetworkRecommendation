@@ -36,7 +36,7 @@ import org.robolectric.annotation.Config;
 
 /** Unit tests for {@link ScanResultUtil}. */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 21, manifest = Config.NONE)
+@Config(manifest = "packages/services/NetworkRecommendation/AndroidManifest.xml", sdk = 23)
 public class ScanResultUtilTest {
 
     @Before

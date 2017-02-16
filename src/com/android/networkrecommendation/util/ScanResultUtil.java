@@ -24,7 +24,6 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
-
 import com.android.networkrecommendation.config.G;
 
 /**

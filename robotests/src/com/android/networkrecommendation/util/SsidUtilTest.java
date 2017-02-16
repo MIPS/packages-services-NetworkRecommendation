@@ -25,7 +25,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests for {@link SsidUtil}. */
 @RunWith(RobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
+@Config(manifest = "packages/services/NetworkRecommendation/AndroidManifest.xml", sdk = 23)
 public class SsidUtilTest {
 
     @Test

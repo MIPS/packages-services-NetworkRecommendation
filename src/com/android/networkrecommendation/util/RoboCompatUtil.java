@@ -26,7 +26,6 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.annotation.VisibleForTesting;
-
 import java.util.List;
 
 /**
@@ -65,11 +64,15 @@ public class RoboCompatUtil {
         wifiManager.connect(wifiConfiguration, null /* actionListener */);
     }
 
-    /** Wraps WifiConfiguration.hasNoInternet and WifiConfiguration.isNoInternetAccessExpected. */
+    /** Wraps WifiConfiguration.hasNoInternetAccess. */
     @SuppressWarnings("unchecked")
     public boolean hasNoInternetAccess(WifiConfiguration wifiConfiguration) {
-        return wifiConfiguration.hasNoInternetAccess()
-                || wifiConfiguration.isNoInternetAccessExpected();
+        return wifiConfiguration.hasNoInternetAccess();
+    }
+
+    /** Wraps WifiConfiguration.isNoInternetAccessExpected. */
+    public boolean isNoInternetAccessExpected(WifiConfiguration wifiConfiguration) {
+        return wifiConfiguration.isNoInternetAccessExpected();
     }
 
     /** Wraps WifiConfiguration.useExternalScores. */

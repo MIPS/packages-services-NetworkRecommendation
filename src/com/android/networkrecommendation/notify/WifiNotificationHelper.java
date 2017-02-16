@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.android.networkrecommendation.notify;
 
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+import static com.android.networkrecommendation.Constants.TAG;
 
 import android.app.Notification;
 import android.app.Notification.Action;
@@ -27,30 +27,35 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.LayerDrawable;
 import android.net.NetworkKey;
 import android.net.ScoredNetwork;
-import android.net.WifiKey;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.annotation.VisibleForTesting;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
-
 import com.android.networkrecommendation.R;
 import com.android.networkrecommendation.SynchronousNetworkRecommendationProvider;
+import com.android.networkrecommendation.util.Blog;
 import com.android.networkrecommendation.util.ImageUtil;
+import com.android.networkrecommendation.util.RoboCompatUtil;
+import com.android.networkrecommendation.util.ScanResultUtil;
 import com.android.networkrecommendation.util.WifiConfigurationUtil;
-
 import java.util.List;
+import javax.annotation.Nullable;
 
-/**
- * Helper class that creates notifications for {@link WifiNotificationController}.
- */
+/** Helper class that creates notifications for {@link WifiNotificationController}. */
 public class WifiNotificationHelper {
+
+    /** This is in reference to the hidden Settings.Global.NETWORK_SCORING_UI_ENABLED */
+    @VisibleForTesting
+    static final String NETWORK_SCORING_UI_ENABLED = "network_scoring_ui_enabled";
+
     private final Context mContext;
     private final SynchronousNetworkRecommendationProvider mCachedScoredNetworkProvider;
 
@@ -61,28 +66,36 @@ public class WifiNotificationHelper {
     }
 
     /**
-     * Creates the main open networks notification with two actions. "Options" link to the
-     * Wi-Fi picker activity, and "Connect" prompts {@link WifiNotificationController}
-     * to connect to the recommended network.
+     * Creates the main open networks notification with two actions. "Options" link to the Wi-Fi
+     * picker activity, and "Connect" prompts {@link WifiNotificationController} to connect to the
+     * recommended network.
      */
     public Notification createMainNotification(WifiConfiguration config, Bitmap badge) {
-        PendingIntent optionsIntent = PendingIntent.getActivity(
-                mContext, 0, new Intent(WifiManager.ACTION_PICK_WIFI_NETWORK), FLAG_UPDATE_CURRENT);
-        Action optionsAction = new Action.Builder(
-                null /* icon */,
-                mContext.getText(R.string.wifi_available_options),
-                optionsIntent)
-                .build();
-        PendingIntent connectIntent = PendingIntent.getBroadcast(
-                mContext,
-                0,
-                new Intent(WifiNotificationController.ACTION_CONNECT_TO_RECOMMENDED_NETWORK),
-                FLAG_UPDATE_CURRENT);
-        Action connectAction = new Action.Builder(
-                null /* icon */,
-                mContext.getText(R.string.wifi_available_connect),
-                connectIntent)
-                .build();
+        PendingIntent optionsIntent =
+                PendingIntent.getBroadcast(
+                        mContext,
+                        0,
+                        new Intent(WifiNotificationController.ACTION_PICK_WIFI_NETWORK),
+                        FLAG_UPDATE_CURRENT);
+        Action optionsAction =
+                new Action.Builder(
+                                null /* icon */,
+                                mContext.getText(R.string.wifi_available_options),
+                                optionsIntent)
+                        .build();
+        PendingIntent connectIntent =
+                PendingIntent.getBroadcast(
+                        mContext,
+                        0,
+                        new Intent(
+                                WifiNotificationController.ACTION_CONNECT_TO_RECOMMENDED_NETWORK),
+                        FLAG_UPDATE_CURRENT);
+        Action connectAction =
+                new Action.Builder(
+                                null /* icon */,
+                                mContext.getText(R.string.wifi_available_connect),
+                                connectIntent)
+                        .build();
         return createNotificationBuilder(config, badge)
                 .addAction(connectAction)
                 .addAction(optionsAction)
@@ -90,15 +103,16 @@ public class WifiNotificationHelper {
     }
 
     /**
-     * Creates the notification that indicates the controller is attempting to connect
-     * to the recommended network.
+     * Creates the notification that indicates the controller is attempting to connect to the
+     * recommended network.
      */
     public Notification createConnectingNotification(WifiConfiguration config, Bitmap badge) {
-        Action connecting = new Action.Builder(
-                null /* icon */,
-                mContext.getText(R.string.wifi_available_connecting),
-                null /* pendingIntent */)
-                .build();
+        Action connecting =
+                new Action.Builder(
+                                null /* icon */,
+                                mContext.getText(R.string.common_connecting),
+                                null /* pendingIntent */)
+                        .build();
         return createNotificationBuilder(config, badge)
                 .addAction(connecting)
                 .setProgress(0 /* max */, 0 /* progress */, true /* indeterminate */)
@@ -106,23 +120,22 @@ public class WifiNotificationHelper {
     }
 
     /**
-     * Creates the notification that indicates the controller successfully connected
-     * to the recommended network.
+     * Creates the notification that indicates the controller successfully connected to the
+     * recommended network.
      */
     public Notification createConnectedNotification(WifiConfiguration config, Bitmap badge) {
-        Action connected = new Action.Builder(
-                null /* icon */,
-                mContext.getText(R.string.wifi_available_connected),
-                null /* pendingIntent */)
-                .build();
-        return createNotificationBuilder(config, badge)
-                .addAction(connected)
-                .build();
+        Action connected =
+                new Action.Builder(
+                                null /* icon */,
+                                mContext.getText(R.string.wifi_available_connected),
+                                null /* pendingIntent */)
+                        .build();
+        return createNotificationBuilder(config, badge).addAction(connected).build();
     }
 
     /**
-     * Creates the notification that indicates the controller failed to connect to
-     * the recommended network.
+     * Creates the notification that indicates the controller failed to connect to the recommended
+     * network.
      */
     public Notification createFailedToConnectNotification(WifiConfiguration config) {
         Spannable failedText =
@@ -130,83 +143,75 @@ public class WifiNotificationHelper {
         Resources resources = mContext.getResources();
         Drawable iconDrawable = mContext.getDrawable(R.drawable.ic_signal_wifi_no_network);
         iconDrawable.setTint(mContext.getColor(R.color.color_tint));
-        Bitmap icon = ImageUtil.buildScaledBitmap(
-                iconDrawable,
-                resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_width),
-                resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_height));
-        failedText.setSpan(new ForegroundColorSpan(
-                Color.RED), 0, failedText.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        return createNotificationBuilder(config, icon)
-                .setContentText(failedText)
-                .build();
+        Bitmap icon =
+                ImageUtil.buildScaledBitmap(
+                        iconDrawable,
+                        resources.getDimensionPixelSize(
+                                android.R.dimen.notification_large_icon_width),
+                        resources.getDimensionPixelSize(
+                                android.R.dimen.notification_large_icon_height));
+        failedText.setSpan(
+                new ForegroundColorSpan(Color.RED),
+                0,
+                failedText.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return createNotificationBuilder(config, icon).setContentText(failedText).build();
     }
 
     private Notification.Builder createNotificationBuilder(WifiConfiguration config, Bitmap badge) {
         CharSequence title = mContext.getText(R.string.wifi_available);
-        PendingIntent deleteIntent = PendingIntent.getBroadcast(
-                mContext,
-                0,
-                new Intent(WifiNotificationController.ACTION_NOTIFICATION_DELETED),
-                FLAG_UPDATE_CURRENT);
+        PendingIntent deleteIntent =
+                PendingIntent.getBroadcast(
+                        mContext,
+                        0,
+                        new Intent(WifiNotificationController.ACTION_NOTIFICATION_DELETED),
+                        FLAG_UPDATE_CURRENT);
         return new Notification.Builder(mContext)
                 .setDeleteIntent(deleteIntent)
-                .setSmallIcon(R.drawable.stat_notify_wifi_in_range)
+                .setSmallIcon(R.drawable.ic_signal_wifi_badged_4_bars)
                 .setLargeIcon(badge)
                 .setAutoCancel(true)
                 .setTicker(title)
                 .setContentTitle(title)
+                .setColor(mContext.getColor(R.color.color_tint))
                 .setContentText(WifiConfigurationUtil.getPrintableSsid(config))
                 .addExtras(getSystemLabelExtras());
     }
 
     private Bundle getSystemLabelExtras() {
         Bundle extras = new Bundle();
-        extras.putString(Notification.EXTRA_SUBSTITUTE_APP_NAME,
+        extras.putString(
+                Notification.EXTRA_SUBSTITUTE_APP_NAME,
                 mContext.getString(R.string.android_system_label));
         return extras;
     }
 
-    //TODO(34177812): Share this logic between systemUi and Settings.
-    static final int[] WIFI_PIE_FOR_BADGING = {
-            R.drawable.ic_signal_wifi_badged_0_bars,
-            R.drawable.ic_signal_wifi_badged_1_bar,
-            R.drawable.ic_signal_wifi_badged_2_bars,
-            R.drawable.ic_signal_wifi_badged_3_bars,
-            R.drawable.ic_signal_wifi_badged_4_bars
-    };
-
-    private int getWifiBadgeResourceForEnum(int badgeEnum) {
-        switch (badgeEnum) {
-            case ScoredNetwork.BADGING_NONE:
-                return 0;
-            case ScoredNetwork.BADGING_SD:
-                return R.drawable.ic_signal_wifi_badged_sd;
-            case ScoredNetwork.BADGING_HD:
-                return R.drawable.ic_signal_wifi_badged_hd;
-            case ScoredNetwork.BADGING_4K:
-                return R.drawable.ic_signal_wifi_badged_4k;
-            default:
-                throw new IllegalArgumentException("No badge resource for enum :" + badgeEnum);
-        }
-    }
-
     /**
-     * Creates a Wi-Fi badge for the notification using matching {@link ScanResult}'s RSSI
-     * and badging from {@link CachedScoredNetworkProvider}.
+     * Creates a Wi-Fi badge for the notification using matching {@link ScanResult}'s RSSI and
+     * badging from {@link CachedScoredNetworkProvider}.
      */
+    @Nullable
     public Bitmap createNotificationBadgeBitmap(
-            @NonNull WifiConfiguration config,
-            @NonNull List<ScanResult> scanResults) {
+            @NonNull WifiConfiguration config, @NonNull List<ScanResult> scanResults) {
         ScanResult matchingScanResult = findMatchingScanResult(scanResults, config);
         if (matchingScanResult == null) {
             return null;
         }
         int rssi = matchingScanResult.level;
-        WifiKey wifiKey = new WifiKey(config.SSID, config.BSSID);
+
+        NetworkKey networkKey;
+        try {
+            networkKey = ScanResultUtil.createNetworkKey(matchingScanResult);
+        } catch (IllegalArgumentException e) {
+            Blog.e(TAG, e, "Error creating NetworkKey.");
+            return null;
+        }
+
         ScoredNetwork scoredNetwork =
-                mCachedScoredNetworkProvider.getCachedScoredNetwork(new NetworkKey(wifiKey));
+                mCachedScoredNetworkProvider.getCachedScoredNetwork(networkKey);
         if (scoredNetwork != null) {
-            return getBadgedWifiBitmap(scoredNetwork.calculateBadge(rssi), rssi);
+            return getBadgedWifiBitmap(
+                    RoboCompatUtil.getInstance().calculateBadge(scoredNetwork, rssi), rssi);
         }
         return null;
     }
@@ -215,23 +220,26 @@ public class WifiNotificationHelper {
         if (badgeEnum == ScoredNetwork.BADGING_NONE) {
             return null;
         }
+        if (Settings.Global.getInt(mContext.getContentResolver(), NETWORK_SCORING_UI_ENABLED, 0)
+                == 0) {
+            badgeEnum = ScoredNetwork.BADGING_NONE;
+        }
         int signalLevel = WifiManager.calculateSignalLevel(rssi, 5);
-        LayerDrawable layerDrawable = new LayerDrawable(new Drawable[]{
-                mContext.getDrawable(WIFI_PIE_FOR_BADGING[signalLevel]),
-                mContext.getDrawable(getWifiBadgeResourceForEnum(badgeEnum))});
-        layerDrawable.setTint(mContext.getColor(R.color.color_tint));
+        Drawable drawable =
+                RoboCompatUtil.getInstance()
+                        .getWifiIcon(signalLevel, badgeEnum, mContext.getTheme());
+        drawable.setTint(mContext.getColor(R.color.color_tint));
         Resources resources = mContext.getResources();
-        return ImageUtil.buildScaledBitmap(layerDrawable,
+        return ImageUtil.buildScaledBitmap(
+                drawable,
                 resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_width),
                 resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_height));
     }
 
-    private ScanResult findMatchingScanResult(List<ScanResult> scanResults,
-            WifiConfiguration wifiConfiguration) {
-        String ssid = WifiConfigurationUtil.removeDoubleQuotes(wifiConfiguration);
-        String bssid = wifiConfiguration.BSSID;
+    private static ScanResult findMatchingScanResult(
+            List<ScanResult> scanResults, WifiConfiguration wifiConfiguration) {
         for (ScanResult scanResult : scanResults) {
-            if (ssid.equals(scanResult.SSID) && bssid.equals(scanResult.BSSID)) {
+            if (ScanResultUtil.doesScanResultMatchWithNetwork(scanResult, wifiConfiguration)) {
                 return scanResult;
             }
         }

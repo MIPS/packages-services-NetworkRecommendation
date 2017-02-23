@@ -55,7 +55,7 @@ public class NetworkRecommendationService extends Service {
         Looper looper = mHandlerThread.getLooper();
         mHandler = new Handler(looper);
         NetworkScoreManager networkScoreManager = getSystemService(NetworkScoreManager.class);
-        mProvider = new DefaultNetworkRecommendationProvider(mHandler,
+        mProvider = new DefaultNetworkRecommendationProvider(this, mHandler::post,
                 networkScoreManager, new DefaultNetworkRecommendationProvider.ScoreStorage());
         NotificationManager notificationManager = getSystemService(NotificationManager.class);
         WifiManager wifiManager = getSystemService(WifiManager.class);
@@ -86,6 +86,12 @@ public class NetworkRecommendationService extends Service {
         mWifiWakeupController.stop();
         mWifiNotificationController.stop();
         return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onDestroy() {
+        mHandlerThread.quit();
+        super.onDestroy();
     }
 
     @Override

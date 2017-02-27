@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.content.Context;
 import android.net.NetworkKey;
 import android.net.NetworkRecommendationProvider;
 import android.net.NetworkScoreManager;
@@ -134,6 +135,9 @@ public class DefaultNetworkRecommendationProviderTest {
     @Mock
     private NetworkScoreManager mNetworkScoreManager;
 
+    @Mock
+    private Context mContext;
+
     private DefaultNetworkRecommendationProvider.ScoreStorage mStorage;
     private DefaultNetworkRecommendationProvider mProvider;
 
@@ -141,8 +145,9 @@ public class DefaultNetworkRecommendationProviderTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         mStorage = new DefaultNetworkRecommendationProvider.ScoreStorage();
-        mProvider = new DefaultNetworkRecommendationProvider(
-                new Handler(Looper.getMainLooper()), mNetworkScoreManager, mStorage);
+        final Handler handler = new Handler(Looper.getMainLooper());
+        mProvider = new DefaultNetworkRecommendationProvider(mContext,
+                handler::post, mNetworkScoreManager, mStorage);
     }
 
     @Test

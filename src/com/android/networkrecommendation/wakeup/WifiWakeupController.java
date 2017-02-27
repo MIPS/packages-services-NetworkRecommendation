@@ -66,6 +66,7 @@ public class WifiWakeupController {
     private final WifiWakeupNetworkSelector mWifiWakeupNetworkSelector;
     private final Handler mHandler;
     private final WifiWakeupNotificationHelper mWifiWakeupNotificationHelper;
+    private final SettingsFacade mSettingsFacade;
     private final AtomicBoolean mStarted;
     @VisibleForTesting final ContentObserver mContentObserver;
 
@@ -81,19 +82,29 @@ public class WifiWakeupController {
     public WifiWakeupController(Context context, ContentResolver contentResolver, Looper looper,
             WifiManager wifiManager, WifiWakeupNetworkSelector wifiWakeupNetworkSelector,
             WifiWakeupNotificationHelper wifiWakeupNotificationHelper) {
+        this(context, contentResolver, looper, wifiManager, wifiWakeupNetworkSelector,
+                wifiWakeupNotificationHelper, new SettingsFacade());
+    }
+
+    @VisibleForTesting
+    WifiWakeupController(Context context, ContentResolver contentResolver, Looper looper,
+            WifiManager wifiManager, WifiWakeupNetworkSelector wifiWakeupNetworkSelector,
+            WifiWakeupNotificationHelper wifiWakeupNotificationHelper,
+            SettingsFacade settingsFacade) {
         mContext = context;
         mContentResolver = contentResolver;
         mHandler = new Handler(looper);
         mWifiWakeupNotificationHelper = wifiWakeupNotificationHelper;
+        mSettingsFacade = settingsFacade;
         mStarted = new AtomicBoolean(false);
         mWifiManager = wifiManager;
         mWifiWakeupNetworkSelector = wifiWakeupNetworkSelector;
         mContentObserver = new ContentObserver(mHandler) {
             @Override
             public void onChange(boolean selfChange) {
-                mWifiWakeupEnabled = Settings.Global.getInt(mContentResolver,
+                mWifiWakeupEnabled = mSettingsFacade.getInt(mContentResolver,
                         Settings.Global.WIFI_WAKEUP_ENABLED, 0) == 1;
-                mAirplaneModeEnabled = Settings.Global.getInt(mContentResolver,
+                mAirplaneModeEnabled = mSettingsFacade.getInt(mContentResolver,
                         Settings.Global.AIRPLANE_MODE_ON, 0) == 1;
             }
         };
@@ -260,5 +271,14 @@ public class WifiWakeupController {
         pw.println("mSavedSsids: " + mSavedSsids);
         pw.println("mSavedSsidsInLastScan: " + mSavedSsidsInLastScan);
         pw.println("mSavedSsidsOnDisable: " + mSavedSsidsOnDisable);
+    }
+
+    /**
+     * Wrapper around Settings to make testing easier.
+     */
+    public static class SettingsFacade {
+        public int getInt(ContentResolver resolver, String name, int def) {
+            return Settings.Global.getInt(resolver, name, def);
+        }
     }
 }

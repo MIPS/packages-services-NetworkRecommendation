@@ -17,15 +17,16 @@
 package com.android.networkrecommendation.wakeup;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyList;
 import static org.mockito.Matchers.anyMap;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -43,7 +44,6 @@ import com.android.networkrecommendation.TestUtil;
 
 import com.google.android.collect.Lists;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -92,47 +92,34 @@ public class WifiWakeupControllerTest {
     }
 
     @Mock private Context mContext;
-    @Mock private NotificationManager mNotificationManager;
     @Mock private ContentResolver mContentResolver;
     @Mock private WifiWakeupNetworkSelector mWifiWakeupNetworkSelector;
     @Mock private WifiWakeupNotificationHelper mWifiWakeupNotificationHelper;
     @Mock private WifiManager mWifiManager;
+    @Mock private WifiWakeupController.SettingsFacade mSettingsFacade;
     @Captor private ArgumentCaptor<BroadcastReceiver> mBroadcastReceiverCaptor;
 
     private WifiWakeupController mWifiWakeupController;
     private BroadcastReceiver mBroadcastReceiver;
 
-    private int mWifiWakeupEnabledOriginalValue;
-    private int mAirplaneModeOriginalValue;
-
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        mWifiWakeupEnabledOriginalValue =
-                Settings.Global.getInt(mContentResolver, Settings.Global.WIFI_WAKEUP_ENABLED, 0);
-        mAirplaneModeOriginalValue =
-                Settings.Global.getInt(mContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
-        Settings.Global.putInt(mContentResolver, Settings.Global.WIFI_WAKEUP_ENABLED, 1);
-        Settings.Global.putInt(mContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
         when(mWifiManager.getWifiApState()).thenReturn(WifiManager.WIFI_AP_STATE_DISABLED);
+        when(mSettingsFacade.getInt(eq(mContentResolver),
+                eq(Settings.Global.WIFI_WAKEUP_ENABLED), anyInt())).thenReturn(1);
+        when(mSettingsFacade.getInt(eq(mContentResolver),
+                eq(Settings.Global.AIRPLANE_MODE_ON), anyInt())).thenReturn(0);
 
         mWifiWakeupController = new WifiWakeupController(mContext, mContentResolver,
                 Looper.getMainLooper(), mWifiManager, mWifiWakeupNetworkSelector,
-                mWifiWakeupNotificationHelper);
+                mWifiWakeupNotificationHelper, mSettingsFacade);
         mWifiWakeupController.start();
 
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 any(IntentFilter.class), anyString(), any(Handler.class));
         mBroadcastReceiver = mBroadcastReceiverCaptor.getValue();
-    }
-
-    @After
-    public void tearDown() {
-        Settings.Global.putInt(mContentResolver, Settings.Global.WIFI_WAKEUP_ENABLED,
-                mWifiWakeupEnabledOriginalValue);
-        Settings.Global.putInt(mContentResolver, Settings.Global.AIRPLANE_MODE_ON,
-                mAirplaneModeOriginalValue);
     }
 
     /**
@@ -291,7 +278,8 @@ public class WifiWakeupControllerTest {
      */
     @Test
     public void wifiNotEnabled_userDisablesWifiWakeupFeature() {
-        Settings.Global.putInt(mContentResolver, Settings.Global.WIFI_WAKEUP_ENABLED, 0);
+        when(mSettingsFacade.getInt(eq(mContentResolver),
+                eq(Settings.Global.WIFI_WAKEUP_ENABLED), anyInt())).thenReturn(0);
         when(mWifiManager.getConfiguredNetworks()).thenReturn(
                 Lists.newArrayList(SAVED_WIFI_CONFIGURATION, SAVED_WIFI_CONFIGURATION_EXTERNAL));
         when(mWifiManager.getScanResults())
@@ -313,7 +301,8 @@ public class WifiWakeupControllerTest {
      */
     @Test
     public void wifiNotEnabled_userIsInAirplaneMode() {
-        Settings.Global.putInt(mContentResolver, Settings.Global.AIRPLANE_MODE_ON, 1);
+        when(mSettingsFacade.getInt(eq(mContentResolver),
+                eq(Settings.Global.AIRPLANE_MODE_ON), anyInt())).thenReturn(1);
         when(mWifiManager.getConfiguredNetworks()).thenReturn(
                 Lists.newArrayList(SAVED_WIFI_CONFIGURATION, SAVED_WIFI_CONFIGURATION_EXTERNAL));
         when(mWifiManager.getScanResults())

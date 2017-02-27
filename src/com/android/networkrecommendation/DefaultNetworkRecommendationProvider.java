@@ -16,6 +16,7 @@
 
 package com.android.networkrecommendation;
 
+import android.content.Context;
 import android.net.NetworkKey;
 import android.net.NetworkRecommendationProvider;
 import android.net.NetworkScoreManager;
@@ -27,7 +28,6 @@ import android.net.WifiKey;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
 import android.util.ArrayMap;
@@ -39,6 +39,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 import javax.annotation.concurrent.GuardedBy;
 
@@ -132,9 +133,10 @@ public class DefaultNetworkRecommendationProvider
     @GuardedBy("mStatsLock")
     private int mScoreCounter = 0;
 
-    public DefaultNetworkRecommendationProvider(Handler handler,
+
+    public DefaultNetworkRecommendationProvider(Context context, Executor executor,
             NetworkScoreManager scoreManager, ScoreStorage storage) {
-        super(handler);
+        super(context, executor);
         mScoreManager = scoreManager;
         mStorage = storage;
     }

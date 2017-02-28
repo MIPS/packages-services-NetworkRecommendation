@@ -18,15 +18,12 @@ package com.android.networkrecommendation.util;
 import android.content.res.Resources.Theme;
 import android.graphics.drawable.Drawable;
 import android.net.NetworkBadging;
-import android.net.RecommendationRequest;
 import android.net.RssiCurve;
 import android.net.ScoredNetwork;
-import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.annotation.VisibleForTesting;
-import java.util.List;
 
 /**
  * This class provides access to @SystemApi methods that were added in Android O and not yet
@@ -49,14 +46,6 @@ public class RoboCompatUtil {
     @VisibleForTesting
     public static void setInstanceForTesting(RoboCompatUtil roboCompatUtil) {
         mRoboCompatUtil = roboCompatUtil;
-    }
-
-    /** Wraps creating a RecommendationResult.Builder. */
-    @SuppressWarnings("unchecked")
-    public RecommendationRequest createRecommendationRequest(List<ScanResult> scanResults) {
-        return new RecommendationRequest.Builder()
-                .setScanResults(scanResults.toArray(new ScanResult[scanResults.size()]))
-                .build();
     }
 
     /** Wraps WifiManager.connect. */

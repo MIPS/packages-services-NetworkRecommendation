@@ -49,7 +49,6 @@ import com.google.common.collect.Lists;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -77,9 +76,8 @@ public class WifiNotificationControllerTest {
     @Mock private WifiNotificationHelper mWifiNotificationHelper;
     @Mock private SynchronousNetworkRecommendationProvider mNetworkRecommendationProvider;
     @Mock private NetworkInfo mNetworkInfo;
-    @Mock private RecommendationResult mRecommendationResult;
     @Mock private RoboCompatUtil mRoboCompatUtil;
-    @Captor private ArgumentCaptor<List<ScanResult>> mScanResultCaptor;
+    @Captor private ArgumentCaptor<RecommendationRequest> mRecommendationRequestCaptor;
     private ContentResolver mContentResolver;
     private Handler mHandler;
     private WifiNotificationController mWifiNotificationController;
@@ -162,8 +160,7 @@ public class WifiNotificationControllerTest {
         createFakeBitmap();
 
         when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
-                .thenReturn(mRecommendationResult);
-        when(mRecommendationResult.getWifiConfiguration()).thenReturn(createFakeConfig());
+                .thenReturn(RecommendationResult.createConnectRecommendation(createFakeConfig()));
 
         // The notification should not be displayed after only two scan results.
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
@@ -204,8 +201,7 @@ public class WifiNotificationControllerTest {
 
         // Recommendation result with no WifiConfiguration returned.
         when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
-                .thenReturn(mRecommendationResult);
-        when(mRecommendationResult.getWifiConfiguration()).thenReturn(null);
+                .thenReturn(RecommendationResult.createDoNotConnectRecommendation());
 
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
@@ -230,8 +226,7 @@ public class WifiNotificationControllerTest {
         createFakeBitmap();
 
         when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
-                .thenReturn(mRecommendationResult);
-        when(mRecommendationResult.getWifiConfiguration()).thenReturn(createFakeConfig());
+                .thenReturn(RecommendationResult.createConnectRecommendation(createFakeConfig()));
 
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
@@ -277,8 +272,7 @@ public class WifiNotificationControllerTest {
         createFakeBitmap();
 
         when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
-                .thenReturn(mRecommendationResult);
-        when(mRecommendationResult.getWifiConfiguration()).thenReturn(createFakeConfig());
+                .thenReturn(RecommendationResult.createConnectRecommendation(createFakeConfig()));
 
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
@@ -321,8 +315,7 @@ public class WifiNotificationControllerTest {
         createFakeBitmap();
 
         when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
-                .thenReturn(mRecommendationResult);
-        when(mRecommendationResult.getWifiConfiguration()).thenReturn(createFakeConfig());
+                .thenReturn(RecommendationResult.createConnectRecommendation(createFakeConfig()));
 
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
@@ -336,6 +329,62 @@ public class WifiNotificationControllerTest {
         // Send dismiss intent
         Intent intent = new Intent(WifiNotificationController.ACTION_NOTIFICATION_DELETED);
         ShadowApplication.getInstance().sendBroadcast(intent);
+    }
+
+    /** Verifies the flow where "Settings" button on notification is clicked. */
+    @Test
+    public void verifyNotificationsFlowOnClickSettingsFromMainNotification() throws Exception {
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_ENABLED);
+
+        mBroadcastIntentTestHelper.sendWifiStateChanged();
+        when(mNetworkInfo.getDetailedState()).thenReturn(DetailedState.DISCONNECTED);
+        mBroadcastIntentTestHelper.sendNetworkStateChanged(mNetworkInfo);
+        setOpenAccessPoints();
+        createFakeBitmap();
+
+        when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
+                .thenReturn(RecommendationResult.createConnectRecommendation(createFakeConfig()));
+
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+
+        // Show main notification
+        verify(mWifiNotificationHelper)
+                .createMainNotification(any(WifiConfiguration.class), any(Bitmap.class));
+        verify(mNotificationManager).notify(anyString(), anyInt(), any(Notification.class));
+
+        // Send click settings intent
+        Intent intent = new Intent(WifiNotificationController.ACTION_PICK_WIFI_NETWORK);
+        ShadowApplication.getInstance().sendBroadcast(intent);
+    }
+
+    /** Verifies the flow when notification is reset on captive portal check. */
+    @Test
+    public void verifyNotificationsFlowResetNotificationOnCaptivePortalCheck() throws Exception {
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_ENABLED);
+
+        mBroadcastIntentTestHelper.sendWifiStateChanged();
+        when(mNetworkInfo.getDetailedState()).thenReturn(DetailedState.DISCONNECTED);
+        mBroadcastIntentTestHelper.sendNetworkStateChanged(mNetworkInfo);
+        setOpenAccessPoints();
+        createFakeBitmap();
+
+        when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
+                .thenReturn(RecommendationResult.createConnectRecommendation(createFakeConfig()));
+
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+
+        // Show main notification
+        verify(mWifiNotificationHelper)
+                .createMainNotification(any(WifiConfiguration.class), any(Bitmap.class));
+        verify(mNotificationManager).notify(anyString(), anyInt(), any(Notification.class));
+
+        when(mNetworkInfo.getDetailedState()).thenReturn(DetailedState.CAPTIVE_PORTAL_CHECK);
+        mBroadcastIntentTestHelper.sendNetworkStateChanged(mNetworkInfo);
+        verify(mNotificationManager).cancel(anyString(), anyInt());
     }
 
     /** Verifies saved networks are skipped when getting network recommendations */
@@ -356,9 +405,11 @@ public class WifiNotificationControllerTest {
         when(mWifiManager.getConfiguredNetworks())
                 .thenReturn(Lists.newArrayList(createFakeConfig()));
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
-        verify(mRoboCompatUtil).createRecommendationRequest(mScanResultCaptor.capture());
 
-        assertEquals(new ArrayList<>(), mScanResultCaptor.getValue());
+        verify(mNetworkRecommendationProvider)
+                .requestRecommendation(mRecommendationRequestCaptor.capture());
+
+        assertEquals(0, mRecommendationRequestCaptor.getValue().getScanResults().length);
     }
 
     /** Test dump() does not crash. */

@@ -15,6 +15,9 @@
  */
 package com.android.networkrecommendation;
 
+import static com.android.networkrecommendation.PlatformTestObjectFactory.createNetworkKey;
+
+import android.net.NetworkKey;
 import com.android.networkrecommendation.util.SsidUtil;
 
 /**
@@ -35,6 +38,10 @@ public class TestData {
     public static final String BSSID_1 = "01:01:01:01:01:01";
     public static final String BSSID_2 = "02:02:02:02:02:02";
     public static final String BSSID_3 = "03:03:03:03:03:03";
+
+    // Platform objects.
+    public static final NetworkKey NETWORK_KEY1 = createNetworkKey(SSID_1, BSSID_1);
+    public static final NetworkKey NETWORK_KEY2 = createNetworkKey(SSID_2, BSSID_2);
 
     // Can't instantiate.
     private TestData() {}

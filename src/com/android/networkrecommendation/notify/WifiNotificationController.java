@@ -15,6 +15,8 @@
  */
 package com.android.networkrecommendation.notify;
 
+import static com.android.networkrecommendation.Constants.TAG;
+
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
@@ -37,6 +39,7 @@ import android.support.annotation.IntDef;
 import android.support.annotation.Nullable;
 import com.android.networkrecommendation.R;
 import com.android.networkrecommendation.SynchronousNetworkRecommendationProvider;
+import com.android.networkrecommendation.util.Blog;
 import com.android.networkrecommendation.util.RoboCompatUtil;
 import com.android.networkrecommendation.util.ScanResultUtil;
 import java.io.FileDescriptor;
@@ -196,6 +199,7 @@ public class WifiNotificationController {
         filter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
         filter.addAction(ACTION_CONNECT_TO_RECOMMENDED_NETWORK);
         filter.addAction(ACTION_NOTIFICATION_DELETED);
+        filter.addAction(ACTION_PICK_WIFI_NETWORK);
 
         mContext.registerReceiver(
                 mBroadcastReceiver, filter, null /* broadcastPermission */, mHandler);
@@ -215,48 +219,57 @@ public class WifiNotificationController {
             new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    if (intent.getAction().equals(WifiManager.WIFI_STATE_CHANGED_ACTION)) {
-                        mWifiState = mWifiManager.getWifiState();
-                        resetNotification();
-                    } else if (intent.getAction()
-                            .equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
-                        mNetworkInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
-                        NetworkInfo.DetailedState detailedState = mNetworkInfo.getDetailedState();
-                        if (detailedState != NetworkInfo.DetailedState.SCANNING
-                                && detailedState != mDetailedState) {
-                            mDetailedState = detailedState;
-                            switch (mDetailedState) {
-                                case CONNECTED:
-                                    updateNotificationOnConnect();
-                                    break;
-                                case DISCONNECTED:
-                                case CAPTIVE_PORTAL_CHECK:
-                                    resetNotification();
-                                    break;
+                    try {
+                        if (intent.getAction().equals(WifiManager.WIFI_STATE_CHANGED_ACTION)) {
+                            mWifiState = mWifiManager.getWifiState();
+                            resetNotification();
+                        } else if (intent.getAction()
+                                .equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
+                            mNetworkInfo =
+                                    intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
+                            NetworkInfo.DetailedState detailedState =
+                                    mNetworkInfo.getDetailedState();
+                            if (detailedState != NetworkInfo.DetailedState.SCANNING
+                                    && detailedState != mDetailedState) {
+                                mDetailedState = detailedState;
+                                switch (mDetailedState) {
+                                    case CONNECTED:
+                                        updateNotificationOnConnect();
+                                        break;
+                                    case DISCONNECTED:
+                                    case CAPTIVE_PORTAL_CHECK:
+                                        resetNotification();
+                                        break;
 
-                                    // TODO: figure out if these are failure cases when connecting
-                                case IDLE:
-                                case SCANNING:
-                                case CONNECTING:
-                                case DISCONNECTING:
-                                case AUTHENTICATING:
-                                case OBTAINING_IPADDR:
-                                case SUSPENDED:
-                                case FAILED:
-                                case BLOCKED:
-                                case VERIFYING_POOR_LINK:
-                                    break;
+                                        // TODO: figure out if these are failure cases when connecting
+                                    case IDLE:
+                                    case SCANNING:
+                                    case CONNECTING:
+                                    case DISCONNECTING:
+                                    case AUTHENTICATING:
+                                    case OBTAINING_IPADDR:
+                                    case SUSPENDED:
+                                    case FAILED:
+                                    case BLOCKED:
+                                    case VERIFYING_POOR_LINK:
+                                        break;
+                                }
                             }
+                        } else if (intent.getAction()
+                                .equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
+                            checkAndSetNotification(mNetworkInfo, mWifiManager.getScanResults());
+                        } else if (intent.getAction()
+                                .equals(ACTION_CONNECT_TO_RECOMMENDED_NETWORK)) {
+                            connectToRecommendedNetwork();
+                        } else if (intent.getAction().equals(ACTION_NOTIFICATION_DELETED)) {
+                            handleNotificationDeleted();
+                        } else if (intent.getAction().equals(ACTION_PICK_WIFI_NETWORK)) {
+                            openWifiPicker();
                         }
-                    } else if (intent.getAction()
-                            .equals(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)) {
-                        checkAndSetNotification(mNetworkInfo, mWifiManager.getScanResults());
-                    } else if (intent.getAction().equals(ACTION_CONNECT_TO_RECOMMENDED_NETWORK)) {
-                        connectToRecommendedNetwork();
-                    } else if (intent.getAction().equals(ACTION_NOTIFICATION_DELETED)) {
-                        handleNotificationDeleted();
-                    } else if (intent.getAction().equals(ACTION_PICK_WIFI_NETWORK)) {
-                        openWifiPicker();
+                    } catch (RuntimeException re) {
+                        // TODO(b/35044022) Remove try/catch after a couple of releases when we are confident
+                        // this is not going to throw.
+                        Blog.e(TAG, re, "RuntimeException in broadcast receiver.");
                     }
                 }
             };
@@ -340,7 +353,9 @@ public class WifiNotificationController {
         }
 
         RecommendationRequest request =
-                RoboCompatUtil.getInstance().createRecommendationRequest(openNetworks);
+                new RecommendationRequest.Builder()
+                        .setScanResults(openNetworks.toArray(new ScanResult[openNetworks.size()]))
+                        .build();
         return mNetworkRecommendationProvider.requestRecommendation(request);
     }
 

@@ -25,10 +25,4 @@ package com.android.networkrecommendation;
 public class TestUtil {
 
     private TestUtil() {} // do not instantiate
-
-    /** @deprecated Use SsidUtil.quoteSsid rather. TODO(williamm): remove. */
-    @Deprecated
-    public static String quoteSsid(String ssid) {
-        return "\"" + ssid + "\"";
-    }
 }

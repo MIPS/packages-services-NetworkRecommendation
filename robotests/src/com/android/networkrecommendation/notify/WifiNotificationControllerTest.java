@@ -412,6 +412,80 @@ public class WifiNotificationControllerTest {
         assertEquals(0, mRecommendationRequestCaptor.getValue().getScanResults().length);
     }
 
+    /**
+     * Test that recommendations are not requested for new scan results when user has clicked on
+     * connect and a notification is showing.
+     */
+    @Test
+    public void verifyNotificationsFlowSkipNewScanResultsWhenConnectionAttempted()
+            throws Exception {
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_ENABLED);
+
+        mBroadcastIntentTestHelper.sendWifiStateChanged();
+        when(mNetworkInfo.getDetailedState()).thenReturn(DetailedState.DISCONNECTED);
+        mBroadcastIntentTestHelper.sendNetworkStateChanged(mNetworkInfo);
+        setOpenAccessPoints();
+        createFakeBitmap();
+
+        when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
+                .thenReturn(RecommendationResult.createConnectRecommendation(createFakeConfig()));
+
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        verify(mNetworkRecommendationProvider, times(3)).requestRecommendation(any());
+
+        // Show main notification
+        verify(mWifiNotificationHelper)
+                .createMainNotification(any(WifiConfiguration.class), any(Bitmap.class));
+        verify(mNotificationManager).notify(anyString(), anyInt(), any(Notification.class));
+
+        // Send connect intent, should attempt to connect to Wi-Fi
+        Intent intent =
+                new Intent(WifiNotificationController.ACTION_CONNECT_TO_RECOMMENDED_NETWORK);
+        ShadowApplication.getInstance().sendBroadcast(intent);
+        verify(mRoboCompatUtil).connectToWifi(any(WifiManager.class), any(WifiConfiguration.class));
+        verify(mWifiNotificationHelper)
+                .createConnectingNotification(any(WifiConfiguration.class), any(Bitmap.class));
+        verify(mNotificationManager, times(2))
+                .notify(anyString(), anyInt(), any(Notification.class));
+
+        // No new recommendation requests made
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        verify(mNetworkRecommendationProvider, times(3)).requestRecommendation(any());
+    }
+
+    /** Test that the main notification updates when new scan results are available. */
+    @Test
+    public void verifyNotificationsFlowUpdateMainNotificationOnNewScanResults() throws Exception {
+        when(mWifiManager.getWifiState()).thenReturn(WifiManager.WIFI_STATE_ENABLED);
+
+        mBroadcastIntentTestHelper.sendWifiStateChanged();
+        when(mNetworkInfo.getDetailedState()).thenReturn(DetailedState.DISCONNECTED);
+        mBroadcastIntentTestHelper.sendNetworkStateChanged(mNetworkInfo);
+        setOpenAccessPoints();
+        createFakeBitmap();
+
+        when(mNetworkRecommendationProvider.requestRecommendation(any(RecommendationRequest.class)))
+                .thenReturn(RecommendationResult.createConnectRecommendation(createFakeConfig()));
+
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        verify(mNetworkRecommendationProvider, times(3)).requestRecommendation(any());
+
+        // Show main notification
+        verify(mWifiNotificationHelper)
+                .createMainNotification(any(WifiConfiguration.class), any(Bitmap.class));
+        verify(mNotificationManager).notify(anyString(), anyInt(), any(Notification.class));
+
+        // Update main notification.
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        verify(mNetworkRecommendationProvider, times(4)).requestRecommendation(any());
+        verify(mNotificationManager, times(2))
+                .notify(anyString(), anyInt(), any(Notification.class));
+    }
+
     /** Test dump() does not crash. */
     @Test
     public void testDump() {

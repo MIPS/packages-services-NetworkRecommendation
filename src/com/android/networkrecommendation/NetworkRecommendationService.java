@@ -27,12 +27,13 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 
 import com.android.networkrecommendation.notify.WifiNotificationController;
 import com.android.networkrecommendation.notify.WifiNotificationHelper;
 import com.android.networkrecommendation.wakeup.WifiWakeupController;
+import com.android.networkrecommendation.wakeup.WifiWakeupHelper;
 import com.android.networkrecommendation.wakeup.WifiWakeupNetworkSelector;
-import com.android.networkrecommendation.wakeup.WifiWakeupNotificationHelper;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -42,36 +43,43 @@ import java.io.PrintWriter;
  */
 public class NetworkRecommendationService extends Service {
 
-    private HandlerThread mHandlerThread;
-    private Handler mHandler;
+    private HandlerThread mProviderHandlerThread;
+    private Handler mProviderHandler;
+    private HandlerThread mControllerHandlerThread;
+    private Handler mControllerHandler;
     private DefaultNetworkRecommendationProvider mProvider;
     private WifiNotificationController mWifiNotificationController;
     private WifiWakeupController mWifiWakeupController;
 
     @Override
     public void onCreate() {
-        mHandlerThread = new HandlerThread("RecommendationProvider");
-        mHandlerThread.start();
-        Looper looper = mHandlerThread.getLooper();
-        mHandler = new Handler(looper);
+        mProviderHandlerThread = new HandlerThread("RecommendationProvider");
+        mProviderHandlerThread.start();
+        mProviderHandler = new Handler(mProviderHandlerThread.getLooper());
         NetworkScoreManager networkScoreManager = getSystemService(NetworkScoreManager.class);
-        mProvider = new DefaultNetworkRecommendationProvider(this, mHandler::post,
+        mProvider = new DefaultNetworkRecommendationProvider(this, mProviderHandler::post,
                 networkScoreManager, new DefaultNetworkRecommendationProvider.ScoreStorage());
+
+        mControllerHandlerThread = new HandlerThread("RecommendationProvider");
+        mControllerHandlerThread.start();
+        mControllerHandler = new Handler(mControllerHandlerThread.getLooper());
         NotificationManager notificationManager = getSystemService(NotificationManager.class);
         WifiManager wifiManager = getSystemService(WifiManager.class);
+        PowerManager powerManager = getSystemService(PowerManager.class);
         Resources resources = getResources();
         ContentResolver contentResolver = getContentResolver();
         mWifiNotificationController = new WifiNotificationController(
-                this, contentResolver, new Handler(looper), mProvider,
+                this, contentResolver, mControllerHandler, mProvider,
                 wifiManager, notificationManager,
                 new WifiNotificationHelper(this, mProvider));
         WifiWakeupNetworkSelector wifiWakeupNetworkSelector =
-                new WifiWakeupNetworkSelector(resources);
-        WifiWakeupNotificationHelper wifiWakeupNotificationHelper =
-                new WifiWakeupNotificationHelper(this, resources, new Handler(looper),
-                        notificationManager, wifiManager);
-        mWifiWakeupController = new WifiWakeupController(this, contentResolver, looper,
-                wifiManager, wifiWakeupNetworkSelector, wifiWakeupNotificationHelper);
+                new WifiWakeupNetworkSelector(resources, mProvider);
+        WifiWakeupHelper wifiWakeupHelper = new WifiWakeupHelper(this, resources, mControllerHandler,
+                notificationManager, wifiManager);
+        mWifiWakeupController =
+                new WifiWakeupController(this, getContentResolver(), mControllerHandler, wifiManager,
+                        getSystemService(PowerManager.class), wifiWakeupNetworkSelector,
+                        wifiWakeupHelper);
     }
 
     @Override
@@ -90,7 +98,7 @@ public class NetworkRecommendationService extends Service {
 
     @Override
     public void onDestroy() {
-        mHandlerThread.quit();
+        mProviderHandlerThread.quit();
         super.onDestroy();
     }
 

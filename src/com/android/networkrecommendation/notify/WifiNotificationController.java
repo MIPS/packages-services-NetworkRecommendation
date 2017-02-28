@@ -280,6 +280,7 @@ public class WifiNotificationController {
         // don't bother doing any of the following
         if (!mNotificationEnabled
                 || mWifiState != WifiManager.WIFI_STATE_ENABLED
+                || mNotificationState > State.SHOWING_CONNECT_ACTIONS
                 || scanResults == null
                 || scanResults.isEmpty()) {
             return;
@@ -381,7 +382,8 @@ public class WifiNotificationController {
         // place than here)
 
         // Not enough time has passed to show the notification again
-        if (System.currentTimeMillis() < mNotificationRepeatTime) {
+        if (mNotificationState == State.HIDDEN
+                && System.currentTimeMillis() < mNotificationRepeatTime) {
             return;
         }
         Notification notification =
@@ -389,7 +391,9 @@ public class WifiNotificationController {
                         mRecommendedNetwork, mNotificationBadgeBitmap);
         mNotificationRepeatTime = System.currentTimeMillis() + mNotificationRepeatDelayMs;
         postNotification(notification);
-        mNotificationState = State.SHOWING_CONNECT_ACTIONS;
+        if (mNotificationState != State.SHOWING_CONNECT_ACTIONS) {
+            mNotificationState = State.SHOWING_CONNECT_ACTIONS;
+        }
     }
 
     /** Opens activity to allow the user to select a wifi network. */

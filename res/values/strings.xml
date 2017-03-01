@@ -15,6 +15,9 @@
 -->
 
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!-- The service label for network recommendation service. [CHAR LIMIT=40] -->
+    <string name="network_recommendation_service_label">Android Network Scorer</string>
+
     <!-- A notification is shown when there is a high quality open wireless network nearby.  This is the notification's title. -->
     <string name="wifi_available">Connect to Wi\u2011Fi Network</string>
 

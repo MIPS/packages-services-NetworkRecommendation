@@ -16,9 +16,13 @@
 package com.android.networkrecommendation.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
@@ -28,11 +32,28 @@ import org.robolectric.annotation.Config;
 @Config(manifest = "packages/services/NetworkRecommendation/AndroidManifest.xml", sdk = 23)
 public class SsidUtilTest {
 
+    @Rule public ExpectedException thrownException = ExpectedException.none();
+
+    private static final String QUOTED_SSID = "\"foo\"";
+    private static final String UNQUOTED_SSID = "foo";
+
     @Test
     public void testQuote() {
-        assertEquals("\"foo\"", SsidUtil.quoteSsid("foo"));
-        assertEquals("\"foo\"", SsidUtil.quoteSsid("\"foo\""));
-        assertEquals("\"foo\"", SsidUtil.quoteSsid(SsidUtil.quoteSsid("foo")));
+        assertEquals(QUOTED_SSID, SsidUtil.quoteSsid(UNQUOTED_SSID));
+        assertEquals(QUOTED_SSID, SsidUtil.quoteSsid(QUOTED_SSID));
+        assertEquals(QUOTED_SSID, SsidUtil.quoteSsid(SsidUtil.quoteSsid(UNQUOTED_SSID)));
         assertNull(SsidUtil.quoteSsid(null));
+    }
+
+    @Test
+    public void testVerify() {
+        assertFalse(SsidUtil.isValidQuotedSsid(UNQUOTED_SSID));
+        assertTrue(SsidUtil.isValidQuotedSsid(QUOTED_SSID));
+    }
+
+    @Test
+    public void testCheck() {
+        thrownException.expect(IllegalArgumentException.class);
+        SsidUtil.checkIsValidQuotedSsid(UNQUOTED_SSID);
     }
 }

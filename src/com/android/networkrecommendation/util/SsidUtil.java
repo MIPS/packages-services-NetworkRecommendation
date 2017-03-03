@@ -35,7 +35,7 @@ public final class SsidUtil {
         if (ssid == null) {
             return null;
         }
-        if (ssid.startsWith("\"")) {
+        if (isValidQuotedSsid(ssid)) {
             return ssid;
         }
         return "\"" + ssid + "\"";
@@ -58,6 +58,21 @@ public final class SsidUtil {
                     Blog.pii(ssid, G.Netrec.enableSensitiveLogging.get()),
                     Blog.pii(bssid, G.Netrec.enableSensitiveLogging.get()));
             return null;
+        }
+    }
+
+    /**
+     * Returns true if the given string will be accepted as an SSID by WifiKey, especially meaning
+     * it is quoted.
+     */
+    public static boolean isValidQuotedSsid(@Nullable String ssid) {
+        return ssid != null && ssid.startsWith("\"") && ssid.endsWith("\"");
+    }
+
+    /** Thows IllegalArgumentException if the given string cannot be used for an SSID in WifiKey. */
+    public static void checkIsValidQuotedSsid(String ssid) {
+        if (!isValidQuotedSsid(ssid)) {
+            throw new IllegalArgumentException("SSID " + ssid + " expected to be quoted");
         }
     }
 

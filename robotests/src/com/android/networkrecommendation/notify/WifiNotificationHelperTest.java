@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import android.app.Notification;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.net.NetworkBadging;
 import android.net.ScoredNetwork;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
@@ -123,7 +124,7 @@ public class WifiNotificationHelperTest {
                 Lists.newArrayList(createOpenNetworkScanResult(wifiConfig.SSID, wifiConfig.BSSID));
         when(mSynchronousNetworkRecommendationProvider.getCachedScoredNetwork(any()))
                 .thenReturn(Mockito.mock(ScoredNetwork.class));
-        when(mRoboCompatUtil.calculateBadge(any(), anyInt())).thenReturn(ScoredNetwork.BADGING_4K);
+        when(mRoboCompatUtil.calculateBadge(any(), anyInt())).thenReturn(NetworkBadging.BADGING_4K);
         when(mRoboCompatUtil.getWifiIcon(anyInt(), anyInt(), any()))
                 .thenReturn(mContext.getDrawable(android.R.drawable.stat_sys_warning));
 

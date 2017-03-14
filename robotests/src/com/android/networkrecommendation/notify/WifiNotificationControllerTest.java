@@ -357,6 +357,7 @@ public class WifiNotificationControllerTest {
         // Send click settings intent
         Intent intent = new Intent(WifiNotificationController.ACTION_PICK_WIFI_NETWORK);
         ShadowApplication.getInstance().sendBroadcast(intent);
+        verify(mNotificationManager).cancel(anyString(), anyInt());
     }
 
     /** Verifies the flow when notification is reset on captive portal check. */

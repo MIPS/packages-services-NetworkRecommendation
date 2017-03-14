@@ -17,6 +17,7 @@ package com.android.networkrecommendation.util;
 
 import static com.android.networkrecommendation.Constants.TAG;
 
+import android.net.NetworkKey;
 import android.net.WifiKey;
 import android.support.annotation.Nullable;
 import com.android.networkrecommendation.config.G;
@@ -74,6 +75,18 @@ public final class SsidUtil {
         if (!isValidQuotedSsid(ssid)) {
             throw new IllegalArgumentException("SSID " + ssid + " expected to be quoted");
         }
+    }
+
+    /**
+     * Returns a string version of the NetworkKey SSID/BSSID pair for logging which is typically
+     * redacted.
+     *
+     * <p>The IDs will only be returned verbatim if the enableSentitiveLogging flag is set.
+     */
+    public static String getRedactedId(NetworkKey networkKey) {
+        return Blog.pii(
+                String.format("%s/%s", networkKey.wifiKey.ssid, networkKey.wifiKey.bssid),
+                G.Netrec.enableSensitiveLogging.get());
     }
 
     // Can't instantiate.

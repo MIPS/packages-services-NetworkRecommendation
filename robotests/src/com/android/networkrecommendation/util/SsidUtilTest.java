@@ -15,11 +15,17 @@
  */
 package com.android.networkrecommendation.util;
 
+import static com.android.networkrecommendation.TestData.NETWORK_KEY1;
+import static com.android.networkrecommendation.TestData.SSID_1;
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.networkrecommendation.config.Flag;
+import com.android.networkrecommendation.config.G;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -36,6 +42,11 @@ public class SsidUtilTest {
 
     private static final String QUOTED_SSID = "\"foo\"";
     private static final String UNQUOTED_SSID = "foo";
+
+    @Before
+    public void setUp() {
+        Flag.initForTest();
+    }
 
     @Test
     public void testQuote() {
@@ -55,5 +66,17 @@ public class SsidUtilTest {
     public void testCheck() {
         thrownException.expect(IllegalArgumentException.class);
         SsidUtil.checkIsValidQuotedSsid(UNQUOTED_SSID);
+    }
+
+    @Test
+    public void testRedactedId() {
+        G.Netrec.enableSensitiveLogging.override(false);
+        assertThat(SsidUtil.getRedactedId(NETWORK_KEY1)).doesNotContain(SSID_1);
+    }
+
+    @Test
+    public void testRedactedId_sensitiveEnabled() {
+        G.Netrec.enableSensitiveLogging.override(true);
+        assertEquals("\"ssid1\"/01:01:01:01:01:01", SsidUtil.getRedactedId(NETWORK_KEY1));
     }
 }

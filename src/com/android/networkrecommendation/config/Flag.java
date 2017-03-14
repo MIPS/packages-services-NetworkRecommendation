@@ -21,17 +21,23 @@ package com.android.networkrecommendation.config;
  */
 public class Flag<T> {
 
-    private T mValue;
+    private final T mDefaultValue;
+    private T mOverride;
 
-    public Flag(T value) {
-        mValue = value;
+    public Flag(T defaultValue) {
+        mDefaultValue = defaultValue;
+        mOverride = null;
     }
 
     /** Get the currently set flag value. */
     public T get() {
-        return mValue;
+        return mOverride != null ? mOverride : mDefaultValue;
     }
 
+    /** Force a value for testing. */
+    public void override(T value) {
+        mOverride = value;
+    }
 
     /** Ensure flag state is initialized for tests. */
     public static void initForTest() {

@@ -401,6 +401,7 @@ public class WifiNotificationController {
         mContext.startActivity(
                 new Intent(WifiManager.ACTION_PICK_WIFI_NETWORK)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        removeNotification();
     }
 
     /**

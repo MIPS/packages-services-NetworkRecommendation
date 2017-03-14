@@ -15,6 +15,7 @@
  */
 package com.android.networkrecommendation.wakeup;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
@@ -45,6 +46,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
@@ -52,6 +54,7 @@ import org.robolectric.shadows.ShadowLooper;
 @RunWith(RobolectricTestRunner.class)
 @Config(manifest = "packages/services/NetworkRecommendation/AndroidManifest.xml", sdk = 23)
 public class WifiWakeupHelperTest {
+
     private static final String SSID = "ssid";
 
     private Context mContext;
@@ -103,7 +106,6 @@ public class WifiWakeupHelperTest {
     @Test
     public void notificationCanceledWhenNeverConnected() {
         mWifiWakeupHelper.startWifiSession(mWifiConfiguration);
-
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
         verify(mNotificationManager).cancel(anyString(), anyInt());
@@ -116,9 +118,11 @@ public class WifiWakeupHelperTest {
         when(mWifiInfo.getSSID()).thenReturn(SSID);
         when(mWifiManager.isWifiEnabled()).thenReturn(true, false);
 
-        mContext.sendBroadcast(new Intent(WifiManager.WIFI_STATE_CHANGED_ACTION));
-        mContext.sendBroadcast(new Intent(WifiManager.WIFI_STATE_CHANGED_ACTION));
+        mContext.sendBroadcast(new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION));
+        mContext.sendBroadcast(new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION));
 
+        verify(mNotificationManager, times(1))
+                .notify(anyString(), anyInt(), any(Notification.class));
         verify(mNotificationManager).cancel(anyString(), anyInt());
     }
 
@@ -129,11 +133,11 @@ public class WifiWakeupHelperTest {
         when(mWifiInfo.getSSID()).thenReturn(SSID, "blah");
         when(mWifiManager.isWifiEnabled()).thenReturn(true);
 
-        mContext.sendBroadcast(new Intent(WifiManager.WIFI_STATE_CHANGED_ACTION));
+        mContext.sendBroadcast(new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION));
 
         verify(mNotificationManager, never()).cancel(anyString(), anyInt());
 
-        mContext.sendBroadcast(new Intent(WifiManager.WIFI_STATE_CHANGED_ACTION));
+        mContext.sendBroadcast(new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION));
 
         verify(mNotificationManager).cancel(anyString(), anyInt());
     }
@@ -149,11 +153,34 @@ public class WifiWakeupHelperTest {
         when(mWifiManager.isWifiEnabled()).thenReturn(true);
 
         mWifiWakeupHelper.startWifiSession(mWifiConfiguration);
-        mContext.sendBroadcast(new Intent(WifiManager.WIFI_STATE_CHANGED_ACTION));
-        mContext.sendBroadcast(new Intent(WifiManager.WIFI_STATE_CHANGED_ACTION));
+        mContext.sendBroadcast(new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION));
+        mContext.sendBroadcast(new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION));
 
         verify(mNotificationManager, never())
                 .notify(anyString(), anyInt(), any(Notification.class));
         verify(mNotificationManager, never()).cancel(anyString(), anyInt());
+    }
+
+    @Test
+    public void tappingOnSettingsFromNotificationOpensSettingsActivity() {
+        mWifiWakeupHelper.startWifiSession(mWifiConfiguration);
+
+        mContext.sendBroadcast(new Intent(WifiWakeupHelper.ACTION_WIFI_SETTINGS));
+
+        Intent intent = Shadows.shadowOf(RuntimeEnvironment.application).getNextStartedActivity();
+
+        assertThat(intent.getAction()).isEqualTo("android.settings.CONFIGURE_WIFI_SETTINGS");
+    }
+
+    @Test
+    public void dismissingNotificationCancelsNotification() {
+        mWifiWakeupHelper.startWifiSession(mWifiConfiguration);
+
+        mContext.sendBroadcast(
+                new Intent(WifiWakeupHelper.ACTION_DISMISS_WIFI_ENABLED_NOTIFICATION));
+
+        verify(mNotificationManager, times(1))
+                .notify(anyString(), anyInt(), any(Notification.class));
+        verify(mNotificationManager).cancel(anyString(), anyInt());
     }
 }

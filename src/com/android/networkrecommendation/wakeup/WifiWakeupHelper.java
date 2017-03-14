@@ -50,16 +50,22 @@ public class WifiWakeupHelper {
     private static final int NOTIFICATION_ID = R.string.wifi_wakeup_enabled_notification_title;
 
     @VisibleForTesting static final String KEY_SHOWN_SSIDS = "key_shown_ssids";
-    private static final String ACTION_WIFI_SETTINGS =
+
+    @VisibleForTesting
+    static final String ACTION_WIFI_SETTINGS =
             "com.android.networkrecommendation.wakeup.ACTION_WIFI_SETTINGS";
-    private static final String ACTION_DISMISS_WIFI_ENABLED_NOTIFICATION =
+
+    @VisibleForTesting
+    static final String ACTION_DISMISS_WIFI_ENABLED_NOTIFICATION =
             "com.android.networkrecommendation.wakeup.ACTION_DISMISS_WIFI_ENABLED_NOTIFICATION";
-    private static final IntentFilter INTENT_FILTER = new IntentFilter();
+
     private static final long NETWORK_CONNECTED_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(30);
+    private static final IntentFilter INTENT_FILTER = new IntentFilter();
 
     static {
         INTENT_FILTER.addAction(ACTION_DISMISS_WIFI_ENABLED_NOTIFICATION);
-        INTENT_FILTER.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
+        INTENT_FILTER.addAction(ACTION_WIFI_SETTINGS);
+        INTENT_FILTER.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
     }
 
     private final Context mContext;
@@ -83,13 +89,13 @@ public class WifiWakeupHelper {
                     try {
                         if (ACTION_WIFI_SETTINGS.equals(intent.getAction())) {
                             // TODO(netrec): Change to @SystemApi Settings.CONFIGURE_WIFI_SETTINGS
-                            context.startActivity(
+                            mContext.startActivity(
                                     new Intent("android.settings.CONFIGURE_WIFI_SETTINGS")
                                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                         } else if (ACTION_DISMISS_WIFI_ENABLED_NOTIFICATION.equals(
                                 intent.getAction())) {
                             cancelNotificationIfNeeded();
-                        } else if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(
+                        } else if (WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(
                                 intent.getAction())) {
                             networkStateChanged();
                         }

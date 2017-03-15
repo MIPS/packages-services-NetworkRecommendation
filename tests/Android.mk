@@ -12,6 +12,7 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
 LOCAL_SRC_FILES := $(call all-java-files-under, src)
 
 LOCAL_PACKAGE_NAME := NetworkRecommendationTests
+LOCAL_COMPATIBILITY_SUITE := device-tests
 LOCAL_CERTIFICATE := platform
 
 LOCAL_INSTRUMENTATION_FOR := NetworkRecommendation

@@ -27,6 +27,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.net.NetworkBadging;
 import android.net.NetworkKey;
 import android.net.ScoredNetwork;
 import android.net.wifi.ScanResult;
@@ -217,12 +218,12 @@ public class WifiNotificationHelper {
     }
 
     private Bitmap getBadgedWifiBitmap(int badgeEnum, int rssi) {
-        if (badgeEnum == ScoredNetwork.BADGING_NONE) {
+        if (badgeEnum == NetworkBadging.BADGING_NONE) {
             return null;
         }
         if (Settings.Global.getInt(mContext.getContentResolver(), NETWORK_SCORING_UI_ENABLED, 0)
                 == 0) {
-            badgeEnum = ScoredNetwork.BADGING_NONE;
+            badgeEnum = NetworkBadging.BADGING_NONE;
         }
         int signalLevel = WifiManager.calculateSignalLevel(rssi, 5);
         Drawable drawable =

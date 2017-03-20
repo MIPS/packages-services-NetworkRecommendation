@@ -36,7 +36,7 @@ import android.os.PowerManager;
 import android.provider.Settings;
 import com.android.networkrecommendation.BroadcastIntentTestHelper;
 import com.android.networkrecommendation.config.Flag;
-import com.android.networkrecommendation.debug.WideAreaNetworks;
+import com.android.networkrecommendation.config.WideAreaNetworks;
 import com.android.networkrecommendation.util.RoboCompatUtil;
 import com.google.common.collect.Lists;
 import java.io.FileDescriptor;

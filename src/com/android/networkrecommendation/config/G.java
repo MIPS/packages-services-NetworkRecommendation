@@ -24,6 +24,7 @@ public final class G {
      */
     public interface Netrec {
         Flag<Boolean> enableSensitiveLogging = new Flag(false);
+        Flag<String> wideAreaNetworks = new Flag("xfinitywifi,XFINITY");
     }
 
     private G() {}

@@ -34,7 +34,7 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import com.android.networkrecommendation.config.G;
-import com.android.networkrecommendation.debug.WideAreaNetworks;
+import com.android.networkrecommendation.config.WideAreaNetworks;
 import com.android.networkrecommendation.util.Blog;
 import com.android.networkrecommendation.util.RoboCompatUtil;
 import com.android.networkrecommendation.util.WifiConfigurationUtil;

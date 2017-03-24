@@ -30,9 +30,25 @@
 
     <string name="android_system_label">Android System</string>
 
+    <!-- Notification title when there is a high quality open wireless network nearby.-->
+    <string name="wifi_available_title">Connect to open Wi\u2011Fi network</string>
+    <!-- Notification title when the system is connecting to a high quality open network. -->
+    <string name="wifi_available_title_connecting">Connecting to open Wi\u2011Fi network</string>
+    <!-- Notification title when the system has connected to the high quality open network. -->
+    <string name="wifi_available_title_connected">Connected to Wi\u2011Fi network</string>
+    <!-- Notification title when the system failed to connect to the high quality open network. -->
+    <string name="wifi_available_title_failed">Couldn\u0027t connect to Wi\u2011Fi network</string>
+    <!-- Notification content informing the user that tapping on this notification will open the wifi picker. -->
+    <string name="wifi_available_content_failed">Tap to see all networks</string>
+
+    <!-- Notification action name for connecting to the network specified in the notification body. -->
+    <string name="wifi_available_action_connect">Connect</string>
+    <!-- Notification action name for opening the wifi picker, showing the user all the nearby networks. -->
+    <string name="wifi_available_action_all_networks">All Networks</string>
+
     <!-- A notification is shown when Wi-Fi Wakeup enables Wi-Fi. -->
-    <string name="wifi_wakeup_enabled_notification_title">Wi\u2011Fi was turned on automatically</string>
-    <string name="wifi_wakeup_enabled_notification_context">"Wi\u2011Fi turned on because you are near saved network, %1$s."</string>
+    <string name="wifi_wakeup_enabled_notification_title">Wi\u2011Fi turned on automatically</string>
+    <string name="wifi_wakeup_enabled_notification_context">You\u0027re near a saved network: %1$s</string>
 
     <!-- Text used to indicate that a connection attempt is ongoing [CHAR LIMIT=20] -->
     <string name="common_connecting">Connecting&#8230;</string>

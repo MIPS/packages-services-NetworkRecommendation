@@ -196,7 +196,7 @@ public class WifiWakeupHelper {
         Notification notification =
                 new Notification.Builder(mContext)
                         .setContentTitle(title)
-                        .setSmallIcon(R.drawable.ic_signal_wifi_badged_4_bars)
+                        .setSmallIcon(R.drawable.ic_signal_wifi_statusbar_not_connected)
                         .setColor(mContext.getColor(R.color.color_tint))
                         .setStyle(new Notification.BigTextStyle().bigText(summary))
                         .setAutoCancel(true)

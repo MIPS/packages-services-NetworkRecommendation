@@ -169,7 +169,7 @@ public class WifiNotificationHelper {
                         FLAG_UPDATE_CURRENT);
         return new Notification.Builder(mContext)
                 .setDeleteIntent(deleteIntent)
-                .setSmallIcon(R.drawable.ic_signal_wifi_badged_4_bars)
+                .setSmallIcon(R.drawable.ic_signal_wifi_statusbar_not_connected)
                 .setLargeIcon(badge)
                 .setAutoCancel(true)
                 .setTicker(title)

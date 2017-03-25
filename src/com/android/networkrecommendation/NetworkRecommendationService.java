@@ -31,6 +31,7 @@ import android.os.PowerManager;
 
 import com.android.networkrecommendation.notify.WifiNotificationController;
 import com.android.networkrecommendation.notify.WifiNotificationHelper;
+import com.android.networkrecommendation.util.NotificationChannelUtil;
 import com.android.networkrecommendation.wakeup.WifiWakeupController;
 import com.android.networkrecommendation.wakeup.WifiWakeupHelper;
 import com.android.networkrecommendation.wakeup.WifiWakeupNetworkSelector;
@@ -64,14 +65,15 @@ public class NetworkRecommendationService extends Service {
         mControllerHandlerThread.start();
         mControllerHandler = new Handler(mControllerHandlerThread.getLooper());
         NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        NotificationChannelUtil.configureNotificationChannels(notificationManager, this);
+
         WifiManager wifiManager = getSystemService(WifiManager.class);
         PowerManager powerManager = getSystemService(PowerManager.class);
         Resources resources = getResources();
         ContentResolver contentResolver = getContentResolver();
         mWifiNotificationController = new WifiNotificationController(
                 this, contentResolver, mControllerHandler, mProvider,
-                wifiManager, notificationManager,
-                new WifiNotificationHelper(this, mProvider));
+                wifiManager, notificationManager, new WifiNotificationHelper(this));
         WifiWakeupNetworkSelector wifiWakeupNetworkSelector =
                 new WifiWakeupNetworkSelector(resources, mProvider);
         WifiWakeupHelper wifiWakeupHelper = new WifiWakeupHelper(this, resources, mControllerHandler,

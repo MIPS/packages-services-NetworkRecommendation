@@ -18,18 +18,6 @@
     <!-- The service label for network recommendation service. [CHAR LIMIT=40] -->
     <string name="network_recommendation_service_label">System default</string>
 
-    <!-- A notification is shown when there is a high quality open wireless network nearby.  This is the notification's title. -->
-    <string name="wifi_available">Connect to Wi\u2011Fi Network</string>
-
-    <!-- A notification is shown when there is a high quality open wireless network nearby. These are the different notification actions. -->
-    <string name="wifi_available_options">Options</string>
-    <string name="wifi_available_connect">Connect</string>
-    <string name="wifi_available_connecting">Connecting</string>
-    <string name="wifi_available_connected">Connected</string>
-    <string name="wifi_available_failed">FAILED TO CONNECT</string>
-
-    <string name="android_system_label">Android System</string>
-
     <!-- Notification title when there is a high quality open wireless network nearby.-->
     <string name="wifi_available_title">Connect to open Wi\u2011Fi network</string>
     <!-- Notification title when the system is connecting to a high quality open network. -->
@@ -52,4 +40,11 @@
 
     <!-- Text used to indicate that a connection attempt is ongoing [CHAR LIMIT=20] -->
     <string name="common_connecting">Connecting&#8230;</string>
+
+    <!-- Name of the notification channel group of our Wi-Fi messages -->
+    <string name="notification_channel_group_name">Wi\u2011Fi messages</string>
+    <!-- Name of the notification channel for a notification shown when there is a high quality open wireless network nearby. -->
+    <string name="notification_channel_wakeup_name">Wi\u2011Fi turned on</string>
+    <!-- Name of the notification channel for a notification shown when Wi-Fi Wakeup enables Wi-Fi.. -->
+    <string name="notification_channel_network_available">Network available</string>
 </resources>

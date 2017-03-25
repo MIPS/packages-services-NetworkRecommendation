@@ -74,11 +74,6 @@ public class RoboCompatUtil {
         return wifiConfiguration.isPasspoint();
     }
 
-    /** Wraps ScoredNetwork.calculateBadge. */
-    public int calculateBadge(ScoredNetwork scoredNetwork, int rssi) {
-        return scoredNetwork.calculateBadge(rssi);
-    }
-
     /** Wraps NetworkBadging.getWifiIcon. */
     public Drawable getWifiIcon(int signalLevel, int badging, Theme theme) {
         return NetworkBadging.getWifiIcon(signalLevel, badging, theme);

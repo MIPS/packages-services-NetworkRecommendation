@@ -34,7 +34,9 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import com.android.networkrecommendation.config.G;
+import com.android.networkrecommendation.config.Preferences;
 import com.android.networkrecommendation.config.WideAreaNetworks;
+import com.android.networkrecommendation.scoring.util.HashUtil;
 import com.android.networkrecommendation.util.Blog;
 import com.android.networkrecommendation.util.RoboCompatUtil;
 import com.android.networkrecommendation.util.WifiConfigurationUtil;
@@ -121,23 +123,26 @@ public class WifiWakeupController {
             new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    if (!mWifiWakeupEnabled) {
-                        return;
-                    }
-
-                    if (WifiManager.WIFI_AP_STATE_CHANGED_ACTION.equals(intent.getAction())) {
-                        handleWifiApStateChanged();
-                    } else if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(intent.getAction())) {
-                        handleWifiStateChanged();
-                    } else if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(
-                            intent.getAction())) {
-                        handleScanResultsAvailable();
-                    } else if (WifiManager.CONFIGURED_NETWORKS_CHANGED_ACTION.equals(
-                            intent.getAction())) {
-                        handleConfiguredNetworksChanged();
-                    } else if (PowerManager.ACTION_POWER_SAVE_MODE_CHANGED.equals(
-                            intent.getAction())) {
-                        handlePowerSaverModeChanged();
+                    try {
+                        if (WifiManager.WIFI_AP_STATE_CHANGED_ACTION.equals(intent.getAction())) {
+                            handleWifiApStateChanged();
+                        } else if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(
+                                intent.getAction())) {
+                            handleWifiStateChanged(false);
+                        } else if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(
+                                intent.getAction())) {
+                            handleScanResultsAvailable();
+                        } else if (WifiManager.CONFIGURED_NETWORKS_CHANGED_ACTION.equals(
+                                intent.getAction())) {
+                            handleConfiguredNetworksChanged();
+                        } else if (PowerManager.ACTION_POWER_SAVE_MODE_CHANGED.equals(
+                                intent.getAction())) {
+                            handlePowerSaverModeChanged();
+                        }
+                    } catch (RuntimeException re) {
+                        // TODO(b/35044022) Remove try/catch after a couple of releases when we are confident
+                        // this is not going to throw.
+                        Blog.e(TAG, re, "RuntimeException in broadcast receiver.");
                     }
                 }
             };
@@ -166,10 +171,10 @@ public class WifiWakeupController {
                 true,
                 mContentObserver);
         mContentObserver.onChange(true);
-        handleWifiStateChanged();
         handlePowerSaverModeChanged();
         handleWifiApStateChanged();
         handleConfiguredNetworksChanged();
+        handleWifiStateChanged(true);
         handleScanResultsAvailable();
     }
 
@@ -240,7 +245,7 @@ public class WifiWakeupController {
         mSavedSsidsInLastScan.retainAll(mSavedSsids);
     }
 
-    private void handleWifiStateChanged() {
+    private void handleWifiStateChanged(boolean calledOnStart) {
         mWifiState = mWifiManager.getWifiState();
         Blog.v(TAG, "handleWifiStateChanged: %d", mWifiState);
 
@@ -250,8 +255,13 @@ public class WifiWakeupController {
                 if (!mAutopilotEnabledWifi) {}
                 break;
             case WifiManager.WIFI_STATE_DISABLED:
-                for (String ssid : mSavedSsidsInLastScan) {
-                    mSavedSsidsOnDisable.put(ssid, NUM_SCANS_TO_CONFIRM_AP_LOSS);
+                if (calledOnStart) {
+                    readDisabledSsidsFromSharedPreferences();
+                } else {
+                    for (String ssid : mSavedSsidsInLastScan) {
+                        mSavedSsidsOnDisable.put(ssid, NUM_SCANS_TO_CONFIRM_AP_LOSS);
+                    }
+                    writeDisabledSsidsToSharedPreferences();
                 }
                 Blog.d(TAG, "Disabled ssid set: %s", mSavedSsidsOnDisable);
 
@@ -261,7 +271,27 @@ public class WifiWakeupController {
         }
     }
 
+    private void readDisabledSsidsFromSharedPreferences() {
+        Set<String> ssidsOnDisable = Preferences.savedSsidsOnDisable.get();
+        for (String ssid : mSavedSsids) {
+            if (ssidsOnDisable.contains(HashUtil.getSsidHash(ssid))) {
+                mSavedSsidsOnDisable.put(ssid, NUM_SCANS_TO_CONFIRM_AP_LOSS);
+            }
+        }
+    }
+
+    private void writeDisabledSsidsToSharedPreferences() {
+        Set<String> ssids = new ArraySet<>();
+        for (String ssid : mSavedSsidsOnDisable.keySet()) {
+            ssids.add(HashUtil.getSsidHash(ssid));
+        }
+        Preferences.savedSsidsOnDisable.put(ssids);
+    }
+
     private void handleScanResultsAvailable() {
+        if (!mWifiWakeupEnabled) {
+            return;
+        }
         List<ScanResult> scanResults = mWifiManager.getScanResults();
         if (scanResults == null) {
             return;

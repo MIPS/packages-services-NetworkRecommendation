@@ -27,7 +27,8 @@
     <uses-permission android:name="android.permission.SUBSTITUTE_NOTIFICATION_APP_NAME"/>
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
 
-    <application android:allowBackup="false"
+    <application android:name=".NetworkRecommendationApp"
+                 android:allowBackup="false"
                  android:directBootAware="true">
 
         <!-- Only the platform can bind to this service -->
@@ -35,6 +36,8 @@
                  android:permission="android.permission.BIND_NETWORK_RECOMMENDATION_SERVICE">
             <meta-data android:name="android.net.scoring.recommendation_service_label"
                        android:value="@string/network_recommendation_service_label"/>
+            <meta-data android:name="android.net.wifi.notification_channel_id_network_available"
+                       android:value="com.android.networkrecommendation.Notifications.WifiMessageGroup.NetworkAvailableChannel" />
             <intent-filter>
                 <action android:name="android.net.action.RECOMMEND_NETWORKS" />
             </intent-filter>

@@ -15,7 +15,7 @@
  */
 package com.android.networkrecommendation.util;
 
-import static com.android.networkrecommendation.TestData.NETWORK_KEY1;
+import static com.android.networkrecommendation.TestData.BSSID_1;
 import static com.android.networkrecommendation.TestData.SSID_1;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -71,12 +71,12 @@ public class SsidUtilTest {
     @Test
     public void testRedactedId() {
         G.Netrec.enableSensitiveLogging.override(false);
-        assertThat(SsidUtil.getRedactedId(NETWORK_KEY1)).doesNotContain(SSID_1);
+        assertThat(SsidUtil.getRedactedId(SSID_1, BSSID_1)).doesNotContain(SSID_1);
     }
 
     @Test
     public void testRedactedId_sensitiveEnabled() {
         G.Netrec.enableSensitiveLogging.override(true);
-        assertEquals("\"ssid1\"/01:01:01:01:01:01", SsidUtil.getRedactedId(NETWORK_KEY1));
+        assertEquals("\"ssid1\"/01:01:01:01:01:01", SsidUtil.getRedactedId(SSID_1, BSSID_1));
     }
 }

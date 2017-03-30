@@ -16,6 +16,7 @@
 package com.android.networkrecommendation.wakeup;
 
 import static com.android.networkrecommendation.Constants.TAG;
+import static com.android.networkrecommendation.util.NotificationChannelUtil.CHANNEL_ID_WAKEUP;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -24,20 +25,23 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import com.android.networkrecommendation.R;
 import com.android.networkrecommendation.config.G;
+import com.android.networkrecommendation.config.Preferences;
+import com.android.networkrecommendation.scoring.util.HashUtil;
 import com.android.networkrecommendation.util.Blog;
+import com.android.networkrecommendation.util.NotificationChannelUtil;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -48,8 +52,6 @@ import java.util.concurrent.TimeUnit;
 public class WifiWakeupHelper {
     /** Unique ID used for the Wi-Fi Enabled notification. */
     private static final int NOTIFICATION_ID = R.string.wifi_wakeup_enabled_notification_title;
-
-    @VisibleForTesting static final String KEY_SHOWN_SSIDS = "key_shown_ssids";
 
     @VisibleForTesting
     static final String ACTION_WIFI_SETTINGS =
@@ -73,7 +75,6 @@ public class WifiWakeupHelper {
     private final NotificationManager mNotificationManager;
     private final Handler mHandler;
     private final WifiManager mWifiManager;
-    private final SharedPreferences mSharedPreferences;
 
     /** Whether the wakeup notification is currently displayed. */
     private boolean mNotificationShown;
@@ -88,9 +89,8 @@ public class WifiWakeupHelper {
                 public void onReceive(Context context, Intent intent) {
                     try {
                         if (ACTION_WIFI_SETTINGS.equals(intent.getAction())) {
-                            // TODO(netrec): Change to @SystemApi Settings.CONFIGURE_WIFI_SETTINGS
                             mContext.startActivity(
-                                    new Intent("android.settings.CONFIGURE_WIFI_SETTINGS")
+                                    new Intent(Settings.ACTION_WIFI_SETTINGS)
                                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                         } else if (ACTION_DISMISS_WIFI_ENABLED_NOTIFICATION.equals(
                                 intent.getAction())) {
@@ -113,30 +113,11 @@ public class WifiWakeupHelper {
             Handler handler,
             NotificationManager notificationManager,
             WifiManager wifiManager) {
-        this(
-                context,
-                resources,
-                handler,
-                notificationManager,
-                wifiManager,
-                context.getSharedPreferences("wifi_wakeup", Context.MODE_PRIVATE));
-        // BUG(26641175): Code coverage does not like line wraps at 'this($'
-    }
-
-    @VisibleForTesting
-    WifiWakeupHelper(
-            Context context,
-            Resources resources,
-            Handler handler,
-            NotificationManager notificationManager,
-            WifiManager wifiManager,
-            SharedPreferences sharedPreferences) {
         mContext = context;
         mResources = resources;
         mNotificationManager = notificationManager;
         mHandler = handler;
         mWifiManager = wifiManager;
-        mSharedPreferences = sharedPreferences;
         mWifiSessionStarted = false;
         mNotificationShown = false;
         mConnectedSsid = null;
@@ -160,18 +141,19 @@ public class WifiWakeupHelper {
                 },
                 NETWORK_CONNECTED_TIMEOUT_MILLIS);
 
-        Set<String> ssidSet = mSharedPreferences.getStringSet(KEY_SHOWN_SSIDS, null);
-        if (ssidSet == null) {
-            ssidSet = new ArraySet<>();
-        } else if (ssidSet.contains(wifiConfiguration.SSID)) {
+        Set<String> hashedSsidSet = Preferences.ssidsForWakeupShown.get();
+        String hashedSsid = HashUtil.getSsidHash(wifiConfiguration.SSID);
+        if (hashedSsidSet.isEmpty()) {
+            hashedSsidSet = new ArraySet<>();
+        } else if (hashedSsidSet.contains(hashedSsid)) {
             Blog.d(
                     TAG,
                     "Already showed Wi-Fi Enabled notification for ssid: %s",
                     Blog.pii(wifiConfiguration.SSID, G.Netrec.enableSensitiveLogging.get()));
             return;
         }
-        ssidSet.add(wifiConfiguration.SSID);
-        mSharedPreferences.edit().putStringSet(KEY_SHOWN_SSIDS, ssidSet).apply();
+        hashedSsidSet.add(hashedSsid);
+        Preferences.ssidsForWakeupShown.put(hashedSsidSet);
 
         String title = mResources.getString(R.string.wifi_wakeup_enabled_notification_title);
         String summary =
@@ -192,8 +174,8 @@ public class WifiWakeupHelper {
         Bundle extras = new Bundle();
         extras.putString(
                 Notification.EXTRA_SUBSTITUTE_APP_NAME,
-                mResources.getString(R.string.android_system_label));
-        Notification notification =
+                mResources.getString(R.string.notification_channel_group_name));
+        Notification.Builder notificationBuilder =
                 new Notification.Builder(mContext)
                         .setContentTitle(title)
                         .setSmallIcon(R.drawable.ic_signal_wifi_statusbar_not_connected)
@@ -205,9 +187,10 @@ public class WifiWakeupHelper {
                         .setVisibility(Notification.VISIBILITY_PUBLIC)
                         .setCategory(Notification.CATEGORY_STATUS)
                         .setContentIntent(savedNetworkSettingsPendingIntent)
-                        .addExtras(extras)
-                        .build();
-        mNotificationManager.notify(TAG, NOTIFICATION_ID, notification);
+                        .setLocalOnly(true)
+                        .addExtras(extras);
+        NotificationChannelUtil.setChannel(notificationBuilder, CHANNEL_ID_WAKEUP);
+        mNotificationManager.notify(TAG, NOTIFICATION_ID, notificationBuilder.build());
         mNotificationShown = true;
     }
 

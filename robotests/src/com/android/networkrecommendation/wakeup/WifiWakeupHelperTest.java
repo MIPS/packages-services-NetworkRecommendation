@@ -15,6 +15,8 @@
  */
 package com.android.networkrecommendation.wakeup;
 
+import static com.android.networkrecommendation.TestData.SSID_1;
+import static com.android.networkrecommendation.TestData.UNQUOTED_SSID_1;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -30,14 +32,18 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
+import android.util.ArraySet;
 import com.android.networkrecommendation.config.Flag;
-import com.google.common.collect.ImmutableSet;
+import com.android.networkrecommendation.config.PreferenceFile;
+import com.android.networkrecommendation.config.Preferences;
+import com.android.networkrecommendation.scoring.util.HashUtil;
+import com.android.networkrecommendation.shadows.ShadowNotificationChannelUtil;
 import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,17 +58,15 @@ import org.robolectric.shadows.ShadowLooper;
 
 /** Unit tests for {@link WifiWakeupHelper} */
 @RunWith(RobolectricTestRunner.class)
-@Config(manifest = "packages/services/NetworkRecommendation/AndroidManifest.xml", sdk = 23)
+@Config(manifest = "packages/services/NetworkRecommendation/AndroidManifest.xml", sdk = 23,
+shadows={ShadowNotificationChannelUtil.class})
 public class WifiWakeupHelperTest {
-
-    private static final String SSID = "ssid";
 
     private Context mContext;
     private WifiConfiguration mWifiConfiguration;
     @Mock private NotificationManager mNotificationManager;
     @Mock private WifiManager mWifiManager;
     @Mock private WifiInfo mWifiInfo;
-    private SharedPreferences mSharedPreferences;
 
     private WifiWakeupHelper mWifiWakeupHelper;
 
@@ -70,11 +74,12 @@ public class WifiWakeupHelperTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         Flag.initForTest();
-        mWifiConfiguration = new WifiConfiguration();
-        mWifiConfiguration.SSID = "\"" + SSID + "\"";
-
         mContext = RuntimeEnvironment.application;
-        mSharedPreferences = mContext.getSharedPreferences("wifi_wakeup", Context.MODE_PRIVATE);
+        PreferenceFile.init(mContext);
+        Preferences.ssidsForWakeupShown.remove();
+
+        mWifiConfiguration = new WifiConfiguration();
+        mWifiConfiguration.SSID = SSID_1;
 
         when(mWifiManager.getConnectionInfo()).thenReturn(mWifiInfo);
 
@@ -84,8 +89,7 @@ public class WifiWakeupHelperTest {
                         mContext.getResources(),
                         new Handler(Looper.getMainLooper()),
                         mNotificationManager,
-                        mWifiManager,
-                        mSharedPreferences);
+                        mWifiManager);
     }
 
     @Test
@@ -97,10 +101,9 @@ public class WifiWakeupHelperTest {
 
         verify(mNotificationManager, times(1))
                 .notify(anyString(), anyInt(), any(Notification.class));
-        Set<String> ssidSet =
-                mSharedPreferences.getStringSet(WifiWakeupHelper.KEY_SHOWN_SSIDS, null);
+        Set<String> ssidSet = Preferences.ssidsForWakeupShown.get();
         assertEquals(1, ssidSet.size());
-        assertTrue(ssidSet.contains(mWifiConfiguration.SSID));
+        assertTrue(ssidSet.contains(HashUtil.getSsidHash(UNQUOTED_SSID_1)));
     }
 
     @Test
@@ -115,7 +118,7 @@ public class WifiWakeupHelperTest {
     public void notificationCanceledWhenWifiDisabled() {
         mWifiWakeupHelper.startWifiSession(mWifiConfiguration);
 
-        when(mWifiInfo.getSSID()).thenReturn(SSID);
+        when(mWifiInfo.getSSID()).thenReturn(UNQUOTED_SSID_1);
         when(mWifiManager.isWifiEnabled()).thenReturn(true, false);
 
         mContext.sendBroadcast(new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION));
@@ -130,7 +133,7 @@ public class WifiWakeupHelperTest {
     public void notificationCanceledWhenSsidChanged() throws Exception {
         mWifiWakeupHelper.startWifiSession(mWifiConfiguration);
 
-        when(mWifiInfo.getSSID()).thenReturn(SSID, "blah");
+        when(mWifiInfo.getSSID()).thenReturn(UNQUOTED_SSID_1, "blah");
         when(mWifiManager.isWifiEnabled()).thenReturn(true);
 
         mContext.sendBroadcast(new Intent(WifiManager.NETWORK_STATE_CHANGED_ACTION));
@@ -144,12 +147,10 @@ public class WifiWakeupHelperTest {
 
     @Test
     public void sessionLoggedWithoutNotification() {
-        mSharedPreferences
-                .edit()
-                .putStringSet(
-                        WifiWakeupHelper.KEY_SHOWN_SSIDS, ImmutableSet.of(mWifiConfiguration.SSID))
-                .commit();
-        when(mWifiInfo.getSSID()).thenReturn(SSID, "blah");
+        Set<String> ssidsShown = new ArraySet<>();
+        ssidsShown.add(HashUtil.getSsidHash(mWifiConfiguration.SSID));
+        Preferences.ssidsForWakeupShown.put(ssidsShown);
+        when(mWifiInfo.getSSID()).thenReturn(UNQUOTED_SSID_1, "blah");
         when(mWifiManager.isWifiEnabled()).thenReturn(true);
 
         mWifiWakeupHelper.startWifiSession(mWifiConfiguration);
@@ -169,7 +170,7 @@ public class WifiWakeupHelperTest {
 
         Intent intent = Shadows.shadowOf(RuntimeEnvironment.application).getNextStartedActivity();
 
-        assertThat(intent.getAction()).isEqualTo("android.settings.CONFIGURE_WIFI_SETTINGS");
+        assertThat(intent.getAction()).isEqualTo(Settings.ACTION_WIFI_SETTINGS);
     }
 
     @Test

@@ -45,6 +45,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com.android.networkrecommendation.config.PreferenceFile;
+
 @RunWith(AndroidJUnit4.class)
 public class NetworkRecommendationServiceTest {
 
@@ -56,6 +58,7 @@ public class NetworkRecommendationServiceTest {
     public final ServiceTestRule serviceRule = new ServiceTestRule();
 
     private INetworkRecommendationProvider bind() throws TimeoutException {
+        PreferenceFile.init(InstrumentationRegistry.getTargetContext());
         Intent bindIntent = new Intent(InstrumentationRegistry.getTargetContext(),
                 NetworkRecommendationService.class);
         bindIntent.setAction(NetworkScoreManager.ACTION_RECOMMEND_NETWORKS);

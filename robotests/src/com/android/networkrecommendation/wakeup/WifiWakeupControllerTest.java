@@ -15,6 +15,7 @@
  */
 package com.android.networkrecommendation.wakeup;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyList;
@@ -36,8 +37,12 @@ import android.os.PowerManager;
 import android.provider.Settings;
 import com.android.networkrecommendation.BroadcastIntentTestHelper;
 import com.android.networkrecommendation.config.Flag;
+import com.android.networkrecommendation.config.PreferenceFile;
+import com.android.networkrecommendation.config.Preferences;
 import com.android.networkrecommendation.config.WideAreaNetworks;
+import com.android.networkrecommendation.scoring.util.HashUtil;
 import com.android.networkrecommendation.util.RoboCompatUtil;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -94,6 +99,7 @@ public class WifiWakeupControllerTest {
         MockitoAnnotations.initMocks(this);
         Flag.initForTest();
         RoboCompatUtil.setInstanceForTesting(mRoboCompatUtil);
+        PreferenceFile.init(RuntimeEnvironment.application);
 
         mSavedWifiConfiguration = new WifiConfiguration();
         mSavedWifiConfiguration.SSID = "\"" + SAVED_SCAN_RESULT.SSID + "\"";
@@ -117,6 +123,7 @@ public class WifiWakeupControllerTest {
         Settings.Global.putInt(mContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
         when(mWifiManager.getWifiApState()).thenReturn(WifiManager.WIFI_AP_STATE_DISABLED);
         ShadowLooper.resetThreadLoopers();
+        Preferences.savedSsidsOnDisable.remove();
 
         mWifiWakeupController =
                 new WifiWakeupController(
@@ -143,6 +150,44 @@ public class WifiWakeupControllerTest {
                 ShadowApplication.getInstance()
                         .hasReceiverForIntent(
                                 new Intent(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)));
+    }
+
+    /**
+     * When {@link Settings.Global.WIFI_WAKEUP_ENABLED} is disabled, scan results should not be
+     * processed.
+     */
+    @Test
+    public void wifiWakeupControllerStarted_settingDisabled() {
+        Settings.Global.putInt(mContentResolver, Settings.Global.WIFI_WAKEUP_ENABLED, 0);
+        when(mWifiManager.getConfiguredNetworks())
+                .thenReturn(Lists.newArrayList(mSavedWifiConfiguration, mSavedWifiConfiguration2));
+        when(mWifiManager.getScanResults())
+                .thenReturn(
+                        Lists.newArrayList(SAVED_SCAN_RESULT),
+                        Lists.newArrayList(SAVED_SCAN_RESULT2));
+        when(mWifiWakeupNetworkSelector.selectNetwork(anyMap(), anyList()))
+                .thenReturn(mSavedWifiConfiguration2);
+        when(mWifiManager.getWifiState())
+                .thenReturn(WifiManager.WIFI_STATE_ENABLED, WifiManager.WIFI_STATE_DISABLED);
+
+        mWifiWakeupController.mContentObserver.onChange(true);
+        mBroadcastIntentTestHelper.sendWifiStateChanged();
+        mBroadcastIntentTestHelper.sendConfiguredNetworksChanged();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendWifiStateChanged();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+
+        verify(mWifiManager, never()).setWifiEnabled(true);
+
+        Settings.Global.putInt(mContentResolver, Settings.Global.WIFI_WAKEUP_ENABLED, 1);
+        mWifiWakeupController.mContentObserver.onChange(true);
+
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+
+        verify(mWifiManager).setWifiEnabled(true);
+        verify(mWifiWakeupHelper).startWifiSession(mSavedWifiConfiguration2);
     }
 
     /**
@@ -259,6 +304,47 @@ public class WifiWakeupControllerTest {
         mBroadcastIntentTestHelper.sendScanResultsAvailable();
 
         verifyZeroInteractions(mWifiWakeupNetworkSelector);
+        verify(mWifiManager, never()).setWifiEnabled(true);
+    }
+
+    /**
+     * When Wi-Fi is disabled near a saved network, and WifiWakeupController stops and starts, Wi-Fi
+     * should not be enabled.
+     */
+    @Test
+    public void userDisabledWifiNearSavedNetwork_controllerStopped_controllerStarted() {
+        when(mWifiManager.getConfiguredNetworks())
+                .thenReturn(Lists.newArrayList(mSavedWifiConfiguration));
+        when(mWifiManager.getScanResults()).thenReturn(Lists.newArrayList(SAVED_SCAN_RESULT));
+        when(mWifiWakeupNetworkSelector.selectNetwork(anyMap(), anyList()))
+                .thenReturn(mSavedWifiConfiguration);
+        when(mWifiManager.getWifiState())
+                .thenReturn(WifiManager.WIFI_STATE_ENABLED, WifiManager.WIFI_STATE_DISABLED);
+
+        mBroadcastIntentTestHelper.sendWifiStateChanged();
+        mBroadcastIntentTestHelper.sendConfiguredNetworksChanged();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendWifiStateChanged();
+        mWifiWakeupController.stop();
+
+        assertEquals(
+                ImmutableSet.of(HashUtil.getSsidHash(SAVED_SCAN_RESULT.SSID)),
+                Preferences.savedSsidsOnDisable.get());
+
+        mWifiWakeupController =
+                new WifiWakeupController(
+                        RuntimeEnvironment.application,
+                        mContentResolver,
+                        new Handler(ShadowLooper.getMainLooper()),
+                        mWifiManager,
+                        mPowerManager,
+                        mWifiWakeupNetworkSelector,
+                        mWifiWakeupHelper);
+        mWifiWakeupController.start();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+        mBroadcastIntentTestHelper.sendScanResultsAvailable();
+
         verify(mWifiManager, never()).setWifiEnabled(true);
     }
 

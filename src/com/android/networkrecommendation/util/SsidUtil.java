@@ -17,7 +17,6 @@ package com.android.networkrecommendation.util;
 
 import static com.android.networkrecommendation.Constants.TAG;
 
-import android.net.NetworkKey;
 import android.net.WifiKey;
 import android.support.annotation.Nullable;
 import com.android.networkrecommendation.config.G;
@@ -78,15 +77,12 @@ public final class SsidUtil {
     }
 
     /**
-     * Returns a string version of the NetworkKey SSID/BSSID pair for logging which is typically
-     * redacted.
+     * Returns a string version of the SSID/BSSID pair for logging which is typically redacted.
      *
-     * <p>The IDs will only be returned verbatim if the enableSentitiveLogging flag is set.
+     * <p>The IDs will only be returned verbatim if the enableSensitiveLogging flag is set.
      */
-    public static String getRedactedId(NetworkKey networkKey) {
-        return Blog.pii(
-                String.format("%s/%s", networkKey.wifiKey.ssid, networkKey.wifiKey.bssid),
-                G.Netrec.enableSensitiveLogging.get());
+    public static String getRedactedId(String ssid, String bssid) {
+        return Blog.pii(String.format("%s/%s", ssid, bssid), G.Netrec.enableSensitiveLogging.get());
     }
 
     // Can't instantiate.

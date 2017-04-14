@@ -18,10 +18,10 @@ package com.android.networkrecommendation.scoring.util;
 import static android.net.wifi.WifiConfiguration.KeyMgmt.IEEE8021X;
 import static android.net.wifi.WifiConfiguration.KeyMgmt.WPA_EAP;
 import static android.net.wifi.WifiConfiguration.KeyMgmt.WPA_PSK;
+import static com.android.networkrecommendation.util.ScanResultUtil.isScanResultForOpenNetwork;
 
 import android.content.Context;
 import android.net.NetworkKey;
-import android.net.WifiKey;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
@@ -30,8 +30,8 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import com.android.networkrecommendation.Constants;
-import com.android.networkrecommendation.config.G;
 import com.android.networkrecommendation.util.Blog;
+import com.android.networkrecommendation.util.ScanResultUtil;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -95,34 +95,12 @@ public final class NetworkUtil {
         Map<NetworkKey, Boolean> openKeys = new HashMap<>();
         for (int i = 0; i < scanResults.size(); i++) {
             ScanResult scanResult = scanResults.get(i);
-            try {
-                openKeys.put(
-                        new NetworkKey(
-                                new WifiKey("\"" + scanResult.SSID + "\"", scanResult.BSSID)),
-                        isOpenNetwork(scanResult));
-            } catch (IllegalArgumentException iae) {
-                // WifiKey rejects some SSIDs that ScanResults considers valid, e.g. those
-                // containing a carriage return (as of L MR1).  It's okay to just exclude those
-                // SSIDs from this list, because the platform uses the same WifiKey implementation, and so
-                // it would never be asking about such SSIDs in the first place.
-                Blog.v(
-                        Constants.TAG,
-                        "Couldn't make a wifi key from "
-                                + Blog.pii(scanResult.SSID, G.Netrec.enableSensitiveLogging.get())
-                                + "/"
-                                + Blog.pii(scanResult.BSSID, G.Netrec.enableSensitiveLogging.get())
-                                + ", skipping");
+            NetworkKey networkKey = ScanResultUtil.createNetworkKey(scanResult);
+            if (networkKey != null) {
+                openKeys.put(networkKey, isScanResultForOpenNetwork(scanResult));
             }
         }
         return openKeys;
-    }
-
-    private static boolean isOpenNetwork(ScanResult result) {
-        return !TextUtils.isEmpty(result.SSID)
-                && !TextUtils.isEmpty(result.BSSID)
-                && !result.capabilities.contains("WEP")
-                && !result.capabilities.contains("PSK")
-                && !result.capabilities.contains("EAP");
     }
 
     /** Returns true if the given config is for an "open" network. */

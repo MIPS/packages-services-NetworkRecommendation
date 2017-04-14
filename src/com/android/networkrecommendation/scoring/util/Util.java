@@ -15,8 +15,12 @@
  */
 package com.android.networkrecommendation.scoring.util;
 
+import static com.android.networkrecommendation.Constants.TAG;
+
 import android.content.Context;
 import android.net.NetworkScoreManager;
+import android.net.ScoredNetwork;
+import com.android.networkrecommendation.util.Blog;
 
 /** Utility methods for the scorer. */
 public final class Util {
@@ -29,5 +33,39 @@ public final class Util {
         final String packageName = context.getPackageName();
 
         return packageName.equals(activeScorer);
+    }
+
+    /** Clear scores in the platform if we're the active scorer. */
+    public static boolean safelyClearScores(Context context) {
+        try {
+            NetworkScoreManager scoreManager =
+                    (NetworkScoreManager) context.getSystemService(Context.NETWORK_SCORE_SERVICE);
+            scoreManager.clearScores();
+            return true;
+        } catch (SecurityException e) {
+            Blog.v(
+                    TAG,
+                    e,
+                    "SecurityException trying to clear scores, probably just an unavoidable race condition. "
+                            + "Ignoring.");
+            return false;
+        }
+    }
+
+    /** Update scores in the platform if we're the active scorer. */
+    public static boolean safelyUpdateScores(Context context, ScoredNetwork[] networkScores) {
+        try {
+            NetworkScoreManager scoreManager =
+                    (NetworkScoreManager) context.getSystemService(Context.NETWORK_SCORE_SERVICE);
+            scoreManager.updateScores(networkScores);
+            return true;
+        } catch (SecurityException e) {
+            Blog.v(
+                    TAG,
+                    e,
+                    "SecurityException trying to update scores, probably just an unavoidable race condition. "
+                            + "Ignoring.");
+            return false;
+        }
     }
 }

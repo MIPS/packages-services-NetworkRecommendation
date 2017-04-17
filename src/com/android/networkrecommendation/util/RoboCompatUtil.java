@@ -23,6 +23,7 @@ import android.net.ScoredNetwork;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.UserManager;
 import android.support.annotation.VisibleForTesting;
 
 /**
@@ -30,6 +31,13 @@ import android.support.annotation.VisibleForTesting;
  * available in using the --config robo_experimental configuration when testing.
  */
 public class RoboCompatUtil {
+
+    /**
+     * {@link UserManager#ACTION_USER_RESTRICTIONS_CHANGED}. TODO: remove when string is available
+     * in experimental.
+     */
+    public static final String ACTION_USER_RESTRICTIONS_CHANGED =
+            "android.os.action.USER_RESTRICTIONS_CHANGED";
 
     private static RoboCompatUtil mRoboCompatUtil;
 

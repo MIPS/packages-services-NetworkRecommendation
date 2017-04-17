@@ -19,6 +19,7 @@ import static com.android.networkrecommendation.Constants.TAG;
 
 import android.net.WifiKey;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import com.android.networkrecommendation.config.G;
 
 /** Utility methods for Wifi Network SSID and BSSID manipulation. */
@@ -31,7 +32,7 @@ public final class SsidUtil {
 
     /** Quote an SSID if it hasn't already been quoted. */
     @Nullable
-    public static String quoteSsid(String ssid) {
+    public static String quoteSsid(@Nullable String ssid) {
         if (ssid == null) {
             return null;
         }
@@ -39,6 +40,14 @@ public final class SsidUtil {
             return ssid;
         }
         return "\"" + ssid + "\"";
+    }
+
+    /** Strip initial and final quotations marks from an SSID. */
+    public static String unquoteSsid(@Nullable String ssid) {
+        if (ssid == null) {
+            return null;
+        }
+        return ssid.replaceAll("^\"", "").replaceAll("\"$", "");
     }
 
     /**
@@ -74,6 +83,24 @@ public final class SsidUtil {
         if (!isValidQuotedSsid(ssid)) {
             throw new IllegalArgumentException("SSID " + ssid + " expected to be quoted");
         }
+    }
+
+    /**
+     * Returns true if the canonical version of two SSIDs (ignoring wrapping quotations) is equal.
+     */
+    public static boolean areEqual(@Nullable String ssid1, @Nullable String ssid2) {
+        String quotedSsid1 = quoteSsid(ssid1);
+        String quotedSsid2 = quoteSsid(ssid2);
+        return TextUtils.equals(quotedSsid1, quotedSsid2);
+    }
+
+    /**
+     * Returns a string version of the SSID for logging which is typically redacted.
+     *
+     * <p>The ID will only be returned verbatim if the enableSensitiveLogging flag is set.
+     */
+    public static String getRedactedId(String ssid) {
+        return Blog.pii(String.format("%s", ssid), G.Netrec.enableSensitiveLogging.get());
     }
 
     /**

@@ -39,7 +39,8 @@ public class WifiNotificationHelper {
     /**
      * Creates the main open networks notification with two actions. "Options" link to the Wi-Fi
      * picker activity, and "Connect" prompts {@link WifiNotificationController} to connect to the
-     * recommended network.
+     * recommended network. Tapping on the content body connects to the recommended network and
+     * opens the wifi picker
      */
     public Notification createMainNotification(WifiConfiguration config) {
         PendingIntent allNetworksIntent =
@@ -67,7 +68,16 @@ public class WifiNotificationHelper {
                                 mContext.getText(R.string.wifi_available_action_connect),
                                 connectIntent)
                         .build();
+        PendingIntent connectAndOpenPickerIntent =
+                PendingIntent.getBroadcast(
+                        mContext,
+                        0,
+                        new Intent(
+                                WifiNotificationController
+                                        .ACTION_CONNECT_TO_RECOMMENDED_NETWORK_AND_OPEN_SETTINGS),
+                        FLAG_UPDATE_CURRENT);
         return createNotificationBuilder(R.string.wifi_available_title, config.SSID)
+                .setContentIntent(connectAndOpenPickerIntent)
                 .addAction(connectAction)
                 .addAction(allNetworksAction)
                 .build();
@@ -95,19 +105,21 @@ public class WifiNotificationHelper {
 
     /**
      * Creates the notification that indicates the controller failed to connect to the recommended
-     * network.
+     * network. Tapping this notification opens the wifi picker.
      */
     public Notification createFailedToConnectNotification() {
-        PendingIntent allNetworksIntent =
+        PendingIntent openWifiPickerAfterFailure =
                 PendingIntent.getBroadcast(
                         mContext,
                         0,
-                        new Intent(WifiNotificationController.ACTION_PICK_WIFI_NETWORK),
+                        new Intent(
+                                WifiNotificationController
+                                        .ACTION_PICK_WIFI_NETWORK_AFTER_CONNECT_FAILURE),
                         FLAG_UPDATE_CURRENT);
         return createNotificationBuilder(
                         R.string.wifi_available_title_failed,
                         mContext.getString(R.string.wifi_available_content_failed))
-                .setContentIntent(allNetworksIntent)
+                .setContentIntent(openWifiPickerAfterFailure)
                 .setAutoCancel(true)
                 .build();
     }
@@ -129,6 +141,7 @@ public class WifiNotificationHelper {
                         .setContentTitle(title)
                         .setColor(mContext.getColor(R.color.color_tint))
                         .setContentText(content)
+                        .setShowWhen(false)
                         .setLocalOnly(true)
                         .addExtras(getOverrideLabelExtras());
         return NotificationChannelUtil.setChannel(builder, CHANNEL_ID_NETWORK_AVAILABLE);

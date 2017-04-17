@@ -28,6 +28,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.os.UserManager;
 
 import com.android.networkrecommendation.notify.WifiNotificationController;
 import com.android.networkrecommendation.notify.WifiNotificationHelper;
@@ -69,19 +70,19 @@ public class NetworkRecommendationService extends Service {
 
         WifiManager wifiManager = getSystemService(WifiManager.class);
         PowerManager powerManager = getSystemService(PowerManager.class);
+        UserManager userManager = getSystemService(UserManager.class);
         Resources resources = getResources();
         ContentResolver contentResolver = getContentResolver();
         mWifiNotificationController = new WifiNotificationController(
                 this, contentResolver, mControllerHandler, mProvider,
-                wifiManager, notificationManager, new WifiNotificationHelper(this));
+                wifiManager, notificationManager, userManager, new WifiNotificationHelper(this));
         WifiWakeupNetworkSelector wifiWakeupNetworkSelector =
                 new WifiWakeupNetworkSelector(resources, mProvider);
         WifiWakeupHelper wifiWakeupHelper = new WifiWakeupHelper(this, resources, mControllerHandler,
                 notificationManager, wifiManager);
         mWifiWakeupController =
                 new WifiWakeupController(this, getContentResolver(), mControllerHandler, wifiManager,
-                        getSystemService(PowerManager.class), wifiWakeupNetworkSelector,
-                        wifiWakeupHelper);
+                        powerManager, userManager, wifiWakeupNetworkSelector, wifiWakeupHelper);
     }
 
     @Override

@@ -146,7 +146,7 @@ public class WifiWakeupHelper {
         if (hashedSsidSet.isEmpty()) {
             hashedSsidSet = new ArraySet<>();
         } else if (hashedSsidSet.contains(hashedSsid)) {
-            Blog.d(
+            Blog.i(
                     TAG,
                     "Already showed Wi-Fi Enabled notification for ssid: %s",
                     Blog.pii(wifiConfiguration.SSID, G.Netrec.enableSensitiveLogging.get()));
@@ -175,13 +175,15 @@ public class WifiWakeupHelper {
         extras.putString(
                 Notification.EXTRA_SUBSTITUTE_APP_NAME,
                 mResources.getString(R.string.notification_channel_group_name));
+        int smallIcon = R.drawable.ic_signal_wifi_statusbar_not_connected;
         Notification.Builder notificationBuilder =
                 new Notification.Builder(mContext)
                         .setContentTitle(title)
-                        .setSmallIcon(R.drawable.ic_signal_wifi_statusbar_not_connected)
+                        .setSmallIcon(smallIcon)
                         .setColor(mContext.getColor(R.color.color_tint))
                         .setStyle(new Notification.BigTextStyle().bigText(summary))
                         .setAutoCancel(true)
+                        .setShowWhen(false)
                         .setDeleteIntent(deletePendingIntent)
                         .setPriority(Notification.PRIORITY_LOW)
                         .setVisibility(Notification.VISIBILITY_PUBLIC)

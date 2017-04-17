@@ -28,6 +28,7 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.PowerManager;
+import android.os.UserManager;
 import android.provider.Settings;
 import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
@@ -65,6 +66,7 @@ public class WifiWakeupController {
     private final ContentResolver mContentResolver;
     private final WifiManager mWifiManager;
     private final PowerManager mPowerManager;
+    private final UserManager mUserManager;
     private final WifiWakeupNetworkSelector mWifiWakeupNetworkSelector;
     private final Handler mHandler;
     private final WifiWakeupHelper mWifiWakeupHelper;
@@ -82,6 +84,7 @@ public class WifiWakeupController {
     private boolean mAirplaneModeEnabled;
     private boolean mAutopilotEnabledWifi;
     private boolean mPowerSaverModeOn;
+    private boolean mWifiConfigRestricted;
 
     public WifiWakeupController(
             Context context,
@@ -89,6 +92,7 @@ public class WifiWakeupController {
             Handler handler,
             WifiManager wifiManager,
             PowerManager powerManager,
+            UserManager userManager,
             WifiWakeupNetworkSelector wifiWakeupNetworkSelector,
             WifiWakeupHelper wifiWakeupHelper) {
         mContext = context;
@@ -98,6 +102,7 @@ public class WifiWakeupController {
         mStarted = new AtomicBoolean(false);
         mWifiManager = wifiManager;
         mPowerManager = powerManager;
+        mUserManager = userManager;
         mWifiWakeupNetworkSelector = wifiWakeupNetworkSelector;
         mContentObserver =
                 new ContentObserver(mHandler) {
@@ -115,6 +120,11 @@ public class WifiWakeupController {
                                                 Settings.Global.AIRPLANE_MODE_ON,
                                                 0)
                                         == 1;
+                        Blog.d(
+                                TAG,
+                                "onChange: [mWifiWakeupEnabled=%b,mAirplaneModeEnabled=%b]",
+                                mWifiWakeupEnabled,
+                                mAirplaneModeEnabled);
                     }
                 };
     }
@@ -138,6 +148,9 @@ public class WifiWakeupController {
                         } else if (PowerManager.ACTION_POWER_SAVE_MODE_CHANGED.equals(
                                 intent.getAction())) {
                             handlePowerSaverModeChanged();
+                        } else if (RoboCompatUtil.ACTION_USER_RESTRICTIONS_CHANGED.equals(
+                                intent.getAction())) {
+                            handleUserRestrictionsChanged();
                         }
                     } catch (RuntimeException re) {
                         // TODO(b/35044022) Remove try/catch after a couple of releases when we are confident
@@ -160,6 +173,7 @@ public class WifiWakeupController {
         filter.addAction(WifiManager.CONFIGURED_NETWORKS_CHANGED_ACTION);
         filter.addAction(WifiManager.WIFI_AP_STATE_CHANGED_ACTION);
         filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
+        filter.addAction(RoboCompatUtil.ACTION_USER_RESTRICTIONS_CHANGED);
         // TODO(b/33695273): conditionally register this receiver based on wifi enabled setting
         mContext.registerReceiver(mBroadcastReceiver, filter, null, mHandler);
         mContentResolver.registerContentObserver(
@@ -172,6 +186,7 @@ public class WifiWakeupController {
                 mContentObserver);
         mContentObserver.onChange(true);
         handlePowerSaverModeChanged();
+        handleUserRestrictionsChanged();
         handleWifiApStateChanged();
         handleConfiguredNetworksChanged();
         handleWifiStateChanged(true);
@@ -196,6 +211,11 @@ public class WifiWakeupController {
     private void handleWifiApStateChanged() {
         mWifiApState = mWifiManager.getWifiApState();
         Blog.v(TAG, "handleWifiApStateChanged: %d", mWifiApState);
+    }
+
+    private void handleUserRestrictionsChanged() {
+        mWifiConfigRestricted = mUserManager.hasUserRestriction(UserManager.DISALLOW_CONFIG_WIFI);
+        Blog.v(TAG, "handleUserRestrictionsChanged: %b", mWifiConfigRestricted);
     }
 
     private void handleConfiguredNetworksChanged() {
@@ -289,7 +309,7 @@ public class WifiWakeupController {
     }
 
     private void handleScanResultsAvailable() {
-        if (!mWifiWakeupEnabled) {
+        if (!mWifiWakeupEnabled || mWifiConfigRestricted) {
             return;
         }
         List<ScanResult> scanResults = mWifiManager.getScanResults();

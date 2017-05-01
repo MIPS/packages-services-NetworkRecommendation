@@ -64,6 +64,6 @@ public class NotificationChannelUtil {
 
     /** Wraps Notification.Builder.setChannel. */
     public static Builder setChannel(Builder notificationBuilder, String channelId) {
-        return notificationBuilder.setChannel(channelId);
+        return notificationBuilder.setChannelId(channelId);
     }
 }

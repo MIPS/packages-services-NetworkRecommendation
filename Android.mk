@@ -6,8 +6,9 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
     guava \
     jsr305 \
 
-LOCAL_SRC_FILES := $(call all-java-files-under, src)
-LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
+# Don't build anything, the needed system APIs have been removed.
+#LOCAL_SRC_FILES := $(call all-java-files-under, src)
+#LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
 
 LOCAL_PACKAGE_NAME := NetworkRecommendation
 LOCAL_CERTIFICATE := platform
@@ -24,4 +25,4 @@ LOCAL_DEX_PREOPT := false
 include $(BUILD_PACKAGE)
 
 # This finds and builds the test apk as well, so a single make does both.
-include $(call all-makefiles-under,$(LOCAL_PATH))
+#include $(call all-makefiles-under,$(LOCAL_PATH))
